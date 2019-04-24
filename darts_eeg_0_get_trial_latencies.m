@@ -1,13 +1,14 @@
 clear; clc; close all;
-scriptdir = 'C:\Users\Rob\Desktop\Dropbox\darts_eeg_analysis';
+scriptdir = 'C:\Users\Rob\Desktop\darts\';
 cd(scriptdir)
 warning('off','MATLAB:rmpath:DirNotFound')
 addpath('.\eeglab13_6_5b')
-data_dir = 'C:\Users\Rob\Desktop\Dropbox\darts_eeg_analysis\data\';
+data_dir = '.\data\';
 addpath(data_dir)
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
+subjs_to_include = {'571', '608'};
 % eeglab;
 close all;
 % Find trial start and end times
@@ -69,6 +70,6 @@ for subj_i = 1:length(subjs_to_include)
 		error('Trial starts after ends')
 	end
 	
-	parsave([EEG.setname,'_latencys.mat'],{start_event_latencys,end_event_latencys,start_event_strings, end_event_strings},{'start_event_time_inds','end_event_time_inds','start_event_strings','end_event_strings'});
+	parsave([data_dir, EEG.setname,'_latencys.mat'],{start_event_latencys,end_event_latencys,start_event_strings, end_event_strings},{'start_event_time_inds','end_event_time_inds','start_event_strings','end_event_strings'});
 end
 
