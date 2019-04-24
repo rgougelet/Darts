@@ -20,22 +20,10 @@ for chan_lab = chan_labs
 		xlsx.([chan_lab{:},'_',freq_lab{:}]) = nan(length(xlsx.pres),1);
 	end
 end
-% trial level accuracy regression
-% throwtimes = xlsx.throwtime(xlsx.distance < 6 & xlsx.throwtime < 5);
-% delay = xlsx.delaystilltime(xlsx.distance < 6 & xlsx.throwtime < 5);
-% pres = xlsx.pres(xlsx.distance < 6 & xlsx.throwtime < 5);
-% dists = xlsx.distance(xlsx.distance < 6 & xlsx.throwtime < 5);
-% subjs = categorical(xlsx.subject(xlsx.distance < 6 & xlsx.throwtime < 5));
-% reg_table = table(throwtimes,delay,dists);
-% reg_table.pres = categorical(pres);
-% reg_table.subjs = categorical(subjs);
-% 
-% fit = fitlm(reg_table,'dists~throwtimes+delay+pres+subjs', 'RobustOpts', 'on');
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
 subjs_to_include = { '571', '608', '607', '579', '580'};
-
 
 for subj_i = 1:length(subjs_to_include)
 
@@ -76,5 +64,16 @@ for subj_i = 1:length(subjs_to_include)
 	end	
 end
 
+% trial level accuracy regression
+throwtimes = xlsx.throwtime(xlsx.distance < 6 & xlsx.throwtime < 5);
+delay = xlsx.delaystilltime(xlsx.distance < 6 & xlsx.throwtime < 5);
+pres = xlsx.pres(xlsx.distance < 6 & xlsx.throwtime < 5);
+dists = xlsx.distance(xlsx.distance < 6 & xlsx.throwtime < 5);
+subjs = categorical(xlsx.subject(xlsx.distance < 6 & xlsx.throwtime < 5));
+Fz_thetas = xlsx.Fz_theta(xlsx.distance < 6 & xlsx.throwtime < 5);
+reg_table = table(throwtimes,delay,dists,Fz_thetas);
+reg_table.pres = categorical(pres);
+reg_table.subjs = categorical(subjs);
 
+fit = fitlm(reg_table,'dists~throwtimes+delay+pres+subjs+Fz_thetas', 'RobustOpts', 'on');
 
