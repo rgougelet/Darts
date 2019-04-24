@@ -8,6 +8,9 @@ addpath(data_dir)
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
 
+% user input
+new_srate = 64;
+
 eeglab;
 close all;
 for subj_i = 1:length(subjs_to_include)
@@ -17,35 +20,30 @@ for subj_i = 1:length(subjs_to_include)
 	
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	
-	% user input
-	new_srate = 64;
-	sets = dir([data_dir,'/*_eeg.set']);
-	
 	% load dataset
-	eeg = pop_loadset('filename', sets(set_i).name, 'filepath', data_dir);
-	eeg = eeg_checkset( eeg );
-	old_setname = eeg.setname;
+	EEG = EEG_checkset( EEG );
+	old_setname = EEG.setname;
 	
 	% exclude channels on arm
-	eeg = pop_select( eeg,'nochannel',{'EXT7', 'EXT8', 'EXG7', 'EXG8'});
+	EEG = pop_select( EEG,'nochannel', {'EXT7', 'EXT8', 'EXG7', 'EXG8'});
 	
 	% high pass filter the data
 	filt_freq = 0.6;
 	cutoff_dist = 1;
 	window_type = 'blackman';
-	filt_ord = pop_firwsord(window_type, eeg.srate, cutoff_dist);
-	eeg = pop_firws(eeg, 'fcutoff', filt_freq/eeg.srate, 'ftype', 'highpass', 'wtype', window_type, 'forder', filt_ord);
+	filt_ord = pop_firwsord(window_type, EEG.srate, cutoff_dist);
+	EEG = pop_firws(EEG, 'fcutoff', filt_freq/EEG.srate, 'ftype', 'highpass', 'wtype', window_type, 'forder', filt_ord);
 	
 	% resample
-	if eeg.srate ~= new_srate % keep old srate if equivalent
-		eeg = pop_resample( eeg, new_srate, 0.8, 0.4);
+	if EEG.srate ~= new_srate % keep old srate if equivalent
+		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);
 	end
 	
 	% apply cleanline
-	eeg = pop_cleanline(eeg, 'bandwidth',2,'chanlist',1:eeg.nbchan ,'computepower',0,'linefreqs', 60:60:(eeg.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
+	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
 	
 	% optimize head center
-	eeg = pop_chanedit(eeg, 'eval','chans = pop_chancenter( chans, [],[]);');
+	EEG = pop_chanedit(EEG, 'eval','chans = pop_chancenter( chans, [],[]);');
 	
 	% save set
 	EEG.setname = [setname_prefix,'_64'];

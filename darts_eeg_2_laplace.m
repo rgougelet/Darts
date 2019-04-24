@@ -1,13 +1,14 @@
 clear; close all; clc;
-script_dir = 'C:\Users\Rob\Desktop\Dropbox\darts_eeg_analysis\';
+script_dir = 'C:\Users\Rob\Desktop\darts\';
 cd(script_dir);
 addpath('.\eeglab13_6_5b')
-data_dir = 'C:\Users\Rob\Desktop\Dropbox\darts_eeg_analysis\data\';
+data_dir = '.\data\';
 addpath(data_dir)
 
+% epoch_half_width = 3; % value of 3 would be -3 pre-event to 3 post-event, must be symmetric
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
-% epoch_half_width = 3; % value of 3 would be -3 pre-event to 3 post-event, must be symmetric
+subjs_to_include = {'571', '608'};
 
 eeglab;
 close all;
