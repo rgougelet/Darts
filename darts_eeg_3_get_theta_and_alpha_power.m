@@ -77,3 +77,8 @@ reg_table.subjs = categorical(subjs);
 
 fit = fitlm(reg_table,'dists~throwtimes+delay+pres+subjs+Fz_thetas', 'RobustOpts', 'on');
 
+Cz_thetas_abs = xlsx.Cz_theta(xlsx.distance < 6 & xlsx.throwtime < 5 & xlsx.pres==0);
+Cz_thetas_pres = xlsx.Cz_theta(xlsx.distance < 6 & xlsx.throwtime < 5 & xlsx.pres==1);
+
+[H,P,CI,STATS] = ttest2(Cz_thetas_abs,Cz_thetas_pres)
+[H,P,CI,STATS] = ttest2(Cz_thetas_abs,Cz_thetas_pres, 'vartype', 'unequal')
