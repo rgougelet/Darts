@@ -8,7 +8,6 @@ addpath(data_dir)
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
-subjs_to_include = { '571', '608', '607', '579', '580'};
 
 % eeglab;
 close all;

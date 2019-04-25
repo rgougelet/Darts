@@ -10,9 +10,10 @@ close all;
 % user input
 chan_labs = {'Fz','Cz','Pz','Oz'};
 freq_labs = {'theta', 'alpha'};
-subjs_to_include = {'571', '579', '580', ...
-	'607', '608', '616', '619', '621', '627', '631'};
-subjs_to_include = { '571', '608', '607', '579', '580'};
+% subjs_to_include = {'571', '579', '580', ...
+% 	'607', '608', '616', '619', '621', '627', '631'};
+subjs_to_include = {'616'};
+
 
 % load XLSX SNAP data
 [num,txt,raw] = xlsread([data_dir,'behavioral_data.xlsx']);
@@ -39,11 +40,25 @@ for subj_i = 1:length(subjs_to_include)
 	EEGs = {EEG_theta,EEG_alpha};
 	load([data_dir, subj_id,'_eeg_64_latencys'])
 	
-	% check eeg:behav trial alignment, astronomically small chance this check can fail
-	for xl_start_row  = 1:(length(xlsx.pres)-length(start_event_time_inds))
-		xl_pres = xlsx.pres(xl_start_row:xl_start_row+length(start_event_time_inds)-1);
-		if sum(end_event_strings(:,4)==num2str(xl_pres)) == length(start_event_time_inds)
-			break
+	% correct data collection issues
+	eeg_trial_strs = str2num(end_event_strings(:,1:4)); % ignore warning, use str2num
+	n_eeg_trials = length(end_event_time_inds);
+	subj_inds = xlsx.subject == str2double(subj_id);
+	snap_trial_strs = str2num([num2str(xlsx.delay(subj_inds)),num2str(xlsx.position(subj_inds),'%02d'),num2str(xlsx.pres(subj_inds))]);
+	n_snap_trials = length(snap_trial_strs);
+	eeg_to_snap_inds = 1:length(eeg_trial_strs);
+	if strcmp(subj_id, '580')
+		eeg_to_snap_inds = 10+(1:n_eeg_trials);
+	end
+	if strcmp(subj_id,'616') || strcmp(subj_id,'621') || strcmp(subj_id,'627')
+		eeg_to_snap_inds = [];
+		for eeg_i = 1:length(eeg_trial_strs)
+			for snap_i = eeg_i:length(snap_trial_strs)
+				if eeg_trial_strs(eeg_i) == snap_trial_strs(snap_i)
+					eeg_to_snap_inds = [eeg_to_snap_inds, snap_i];
+					break
+				end
+			end
 		end
 	end
 
@@ -54,9 +69,9 @@ for subj_i = 1:length(subjs_to_include)
 			freq_lab = freq_labs{freq_lab_i};
 			EEG = EEGs{freq_lab_i};
 			trial_amps = [];
-			for trial_latency_i = 1:length(start_event_time_inds)
-				start_latency_i = start_event_time_inds(trial_latency_i);
-				end_latency_i = end_event_time_inds(trial_latency_i);
+			for eeg_trial_i = 1:length(start_event_time_inds)
+				start_latency_i = start_event_time_inds(eeg_trial_i);
+				end_latency_i = end_event_time_inds(eeg_trial_i);
 				trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,start_latency_i:end_latency_i)),2)';
 			end
 			all_amps = xlsx.([chan_lab,'_',freq_lab]);
