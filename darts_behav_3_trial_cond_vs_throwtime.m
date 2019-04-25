@@ -1,6 +1,6 @@
 % Initialize paths
 clear;
-scriptdir = 'C:\Users\Rob\Desktop\Dropbox\darts_eeg_analysis';
+scriptdir = 'C:\Users\Rob\Desktop\darts\';
 cd(scriptdir)
 
 % load XLSX SNAP data
