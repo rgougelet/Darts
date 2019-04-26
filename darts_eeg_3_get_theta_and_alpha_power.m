@@ -90,18 +90,20 @@ end
 
 % regression
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
-throwtimes = xlsx.throwtime(non_outlier_inds);
+throwtime = xlsx.throwtime(non_outlier_inds);
 delay = xlsx.delaystilltime(non_outlier_inds);
 pres = categorical(xlsx.pres(non_outlier_inds));
 dists = xlsx.distance(non_outlier_inds);
 subjs = categorical(xlsx.subject(non_outlier_inds));
 
-varnames = {'dists', 'throwtimes', 'delay', 'pres', 'subjs'};
+% behavioral regression
+varnames = {'dists', 'throwtime', 'delay', 'pres', 'subjs'};
 eval( ['reg_table = table(', strjoin(varnames,','),');'] );
-fit_behav = fitlm(reg_table,'ResponseVar', 'dists', 'RobustOpts', 'on')
+fit_behav = fitlm(reg_table,'interactions', 'ResponseVar', 'dists', 'RobustOpts', 'on')
+stepwiselm(reg_table,'interactions', 'ResponseVar', 'dists')
 
-% create chan+freq  variables
-varnames = {'dists', 'throwtimes', 'delay', 'pres','subjs'};
+% behav+eeg regression
+varnames = {'dists', 'throwtime', 'delay', 'pres', 'subjs'};
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
 		varname = [chan_lab{:},'_',freq_lab{:}];
@@ -112,10 +114,11 @@ end
 
 eval( ['reg_table = table(', strjoin(varnames,','),');'] );
 
-fit_eeg = fitlm(reg_table,'ResponseVar', 'dists', 'RobustOpts', 'on')
+fit_eeg = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts', 'on')
+fit_eeg = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
 
 for varname = varnames(4:end)
-	varnames{end+1} = [varname{1},'*throwtimes']
+	varnames{end+1} = [varname{1},'*throwtime']
 	varnames{end+1} = [varname{1},'*delay']
 end
 
