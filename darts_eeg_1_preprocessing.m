@@ -1,3 +1,5 @@
+% how the data would be converted to lower sample rate
+% not necessary if data shared already downsampled
 clear; close all; clc;
 script_dir = 'C:\Users\Rob\Desktop\darts\';
 cd(script_dir);
@@ -27,13 +29,13 @@ for subj_i = 1:length(subjs_to_include)
 	% exclude channels on arm
 	EEG = pop_select( EEG,'nochannel', {'EXT7', 'EXT8', 'EXG7', 'EXG8'});
 	
-	% high pass filter the data
-	filt_freq = 0.6;
-	cutoff_dist = 1;
-	window_type = 'blackman';
-	filt_ord = pop_firwsord(window_type, EEG.srate, cutoff_dist);
-	EEG = pop_firws(EEG, 'fcutoff', filt_freq/EEG.srate, 'ftype', 'highpass', 'wtype', window_type, 'forder', filt_ord);
-	
+% 	% high pass filter the data
+% 	filt_freq = 0.6;
+% 	cutoff_dist = 1;
+% 	window_type = 'blackman';
+% 	filt_ord = pop_firwsord(window_type, EEG.srate, cutoff_dist);
+% 	EEG = pop_firws(EEG, 'fcutoff', filt_freq/EEG.srate, 'ftype', 'highpass', 'wtype', window_type, 'forder', filt_ord);
+% 	
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
 		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);

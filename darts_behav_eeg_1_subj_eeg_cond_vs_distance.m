@@ -5,24 +5,26 @@ cd(scriptdir)
 data_dir = '.\data\';
 addpath(data_dir)
 
-% load XLSX SNAP data
-[num,txt,raw] = xlsread([data_dir,'behavioral_data.xlsx']);
-headers = txt(1,:);
-for k=1:numel(headers)
-	xlsx.(headers{k})=num(:,k) ;
-end
-subj_ns = unique(xlsx.subject)';
+load('behav+eeg.mat')
 
 %% Generate within-subject stats
 s_abs_mean_dists=[];s_pres_mean_dists=[];
 s_abs_var_dists=[];s_pres_var_dists=[];
+s_abs_mean_Fz_theta=[];s_pres_mean_Fz_theta=[];
+subj_ns = unique(xlsx.subject)';
 for subj_n = subj_ns
 	subj = structfun(@(F) F([xlsx.subject]==subj_n), xlsx, 'uniform', 0);
 	s_abs_mean_dists(end+1) = nanmean(subj.distance(subj.pres ==0));
 	s_pres_mean_dists(end+1) = nanmean(subj.distance(subj.pres == 1));
 	s_abs_var_dists(end+1) = nanvar(subj.distance(subj.pres == 0));
 	s_pres_var_dists(end+1) = nanvar(subj.distance(subj.pres == 1));
+	s_abs_mean_Fz_theta(end+1) = nanmean(subj.throwtime_Fz_theta(subj.pres ==0));
+	s_pres_mean_Fz_theta(end+1) = nanmean(subj.throwtime_Fz_theta(subj.pres == 1));
 end
+%%
+% [H,P,CI,STATS] = ttest(s_abs_mean_Fz_theta-s_pres_mean_Fz_theta)
+[r,p] = corr(s_abs_mean_Fz_theta',s_abs_mean_dists')
+[r,p] = corr(s_pres_mean_Fz_theta',s_pres_mean_dists')
 
 %% Within-subject distance mean abs/pres
 clc;

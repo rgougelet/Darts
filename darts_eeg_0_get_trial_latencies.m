@@ -26,6 +26,9 @@ for subj_i = 1:length(subjs_to_include)
 	end_event_inds = [];
 	end_event_latencys = [];
 	end_event_strings = [];
+	cue_event_inds = [];
+	cue_event_latencys = [];
+	cue_event_strings = [];
 	
 	% for every event
 	for event_ind = 1:length(EEG.event)
@@ -60,6 +63,20 @@ for subj_i = 1:length(subjs_to_include)
 		start_event_inds(end+1) = start_event_ind;
 		start_event_strings = [start_event_strings; start_event_type];
 		start_event_latencys(end+1) = round(EEG.event(start_event_ind).latency);
+		cue_event_ind = end_event_ind;
+		while true
+			cue_event_ind = cue_event_ind-1;
+			cue_event_type = num2str(EEG.event(cue_event_ind).type);
+			if length(cue_event_type) ~= 7
+				continue
+			end
+			if strcmp(cue_event_type(end-2:end),'009')
+				break
+			end
+		end
+		cue_event_inds(end+1) = cue_event_ind;
+		cue_event_strings = [cue_event_strings; cue_event_type];
+		cue_event_latencys(end+1) = round(EEG.event(cue_event_ind).latency);
 	end
 	
 	% verify
@@ -70,6 +87,6 @@ for subj_i = 1:length(subjs_to_include)
 		error('Trial starts after ends')
 	end
 	
-	parsave([data_dir, EEG.setname,'_latencys.mat'],{start_event_latencys,end_event_latencys,start_event_strings, end_event_strings},{'start_event_time_inds','end_event_time_inds','start_event_strings','end_event_strings'});
+	parsave([data_dir, EEG.setname,'_latencys.mat'],{start_event_latencys,end_event_latencys,start_event_strings, end_event_strings,cue_event_latencys},{'start_event_latencys','end_event_latencys','start_event_strings','end_event_strings', 'cue_event_latencys'});
 end
 
