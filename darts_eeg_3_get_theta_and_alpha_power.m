@@ -4,16 +4,14 @@ cd(script_dir);
 addpath('.\eeglab13_6_5b')
 data_dir = '.\data\';
 addpath(data_dir);
-% eeglab;
-% close all;
 
 % user input
+srate = 64;
 chan_labs = {'Fz','Cz','Pz','Oz'};
 freq_labs = {'theta', 'alpha'};
-interval_labs = {'delay', 'throwtime'};
+interval_labs = {'encoding','maintenance', 'recall'};
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
-% subjs_to_include = {'616'};
 
 % load XLSX SNAP data
 [num,txt,raw] = xlsread([data_dir,'behavioral_data.xlsx']);
@@ -74,25 +72,30 @@ for subj_i = 1:length(subjs_to_include)
 		for freq_lab_i = 1:length(EEGs)
 			freq_lab = freq_labs{freq_lab_i};
 			EEG = EEGs{freq_lab_i};
-			delay_trial_amps = [];
-			throwtime_trial_amps = [];
+% 			encode_trial_amps = [];
+			maint_trial_amps = [];
+			recall_trial_amps = [];
 			for eeg_trial_i = 1:n_eeg_trials
 				start_latency_i = start_event_latencys(eeg_trial_i);
 				cue_latency_i = cue_event_latencys(eeg_trial_i);
 				end_latency_i = end_event_latencys(eeg_trial_i);
-				delay_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,start_latency_i:cue_latency_i)),2)';
-				throwtime_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,cue_latency_i:end_latency_i)),2)';
+% 				encode_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,start_latency_i:(start_latency_i+srate))),2)';
+				maint_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,start_latency_i:cue_latency_i)),2)';
+				recall_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,cue_latency_i:end_latency_i)),2)';
 			end
 			
-			delay_chan_freq_amps = xlsx.(['delay_',chan_lab,'_',freq_lab]);
-			throwtime_chan_freq_amps = xlsx.(['throwtime_',chan_lab,'_',freq_lab]);
+% 			encode_chan_freq_amps = xlsx.(['encoding_',chan_lab,'_',freq_lab]);
+			maint_chan_freq_amps = xlsx.(['maintenance_',chan_lab,'_',freq_lab]);
+			recall_chan_freq_amps = xlsx.(['recall_',chan_lab,'_',freq_lab]);
 
 			for trial_amp_i = 1:n_eeg_trials
-				delay_chan_freq_amps(eeg_to_snap_inds(trial_amp_i)) = delay_trial_amps(trial_amp_i);
-				throwtime_chan_freq_amps(eeg_to_snap_inds(trial_amp_i)) = throwtime_trial_amps(trial_amp_i);
+% 				encode_chan_freq_amps(eeg_to_snap_inds(trial_amp_i)) = encode_trial_amps(trial_amp_i);
+				maint_chan_freq_amps(eeg_to_snap_inds(trial_amp_i)) = maint_trial_amps(trial_amp_i);
+				recall_chan_freq_amps(eeg_to_snap_inds(trial_amp_i)) = recall_trial_amps(trial_amp_i);
 			end
-			xlsx.(['delay_',chan_lab,'_',freq_lab]) = delay_chan_freq_amps;
-			xlsx.(['throwtime_',chan_lab,'_',freq_lab]) = throwtime_chan_freq_amps;
+% 			xlsx.(['encoding_',chan_lab,'_',freq_lab]) = encode_chan_freq_amps;
+			xlsx.(['maintenance_',chan_lab,'_',freq_lab]) = maint_chan_freq_amps;
+			xlsx.(['recall_',chan_lab,'_',freq_lab]) = recall_chan_freq_amps;
 	
 		end
 	end	
@@ -110,17 +113,17 @@ dists = xlsx.distance(non_outlier_inds).^(1/2);
 subjs = categorical(xlsx.subject(non_outlier_inds));
 
 % behavioral regression
-varnames = {'dists', 'throwtime', 'delay', 'pres', 'subjs'};
+varnames = {'dists', 'throwtime', 'delay', 'pres'};
 eval( ['reg_table = table(', strjoin(varnames,','),');'] );
-% fit_behav = fitlm(reg_table,'interactions', 'ResponseVar', 'dists', 'RobustOpts', 'on')
-swfit_behav = stepwiselm(reg_table,'interactions', 'ResponseVar', 'dists')
+fit_behav = fitlm(reg_table,'interactions', 'ResponseVar', 'dists', 'RobustOpts', 'on')
+% swfit_behav = stepwiselm(reg_table,'interactions', 'ResponseVar', 'dists')
 % anova(swfit_behav)
 
 %% behav+eeg regression, no interaction 
 chan_labs = {'Fz','Cz','Pz','Oz'};
 freq_labs = {'theta', 'alpha'};
-interval_labs = {'delay', 'throwtime'};
-varnames = {'dists'; 'throwtime'; 'delay';'pres'; 'subjs'};
+interval_labs = {'maintenance', 'recall'};
+varnames = {'dists'; 'throwtime'; 'delay';'pres'};
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
 		for interval_lab = interval_labs
@@ -133,9 +136,23 @@ end
 
 eval( ['reg_table = table(', strjoin(varnames,','),');'] );
 
-% fit_eeg = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts', 'on')
-% anova(fit_eeg, 'summary')
-fit_eeg = stepwiselm(reg_table,'interactions','ResponseVar', 'dists', 'Criterion', 'aic')
+fit_eeg = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts', 'on')
+results = sortrows(anova(fit_eeg),5,'descend')
+% results = table2array(anova(fit_eeg));
+% results(results(:,5) < 0.05)
+fit_eeg = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
+% 
+% thresholds = 0.05./(height(results):-1:1)'
+% sum(results.pValue<thresholds)
+% fdr_res = fdr_bh(results.pValue, 0.9999, 'dep', 'yes');
+% for k = 1:length(results.pValue)
+% 	if results.pValue(k) <= (k/length(results.pValue))*0.05
+% 		break
+% 	end
+% end
+% m = length(results.pValue);
+% results.pValue<=0.05
+% plot(results.pValue)
 %%
 for varname = varnames(4:end)
 	varnames{end+1} = [varname{1};'*throwtime']
