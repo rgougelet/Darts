@@ -1,20 +1,19 @@
 % how the data would be converted to lower sample rate
 % not necessary if data shared already downsampled
 clear; close all; clc;
-script_dir = 'C:\Users\Rob\Desktop\darts\';
+script_dir = '/data/mobi/Darts/Analysis/darts';
 cd(script_dir);
-addpath('.\eeglab13_6_5b')
-data_dir = '.\data\';
+rmpath('/data/common/matlab/eeglab')
+addpath('./eeglab13_6_5b')
+data_dir = './data/';
 addpath(data_dir)
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
 
 % user input
-new_srate = 64;
+new_srate = 512;
 
-eeglab;
-close all;
 for subj_i = 1:length(subjs_to_include)
 	start = tic;
 	subj_id = subjs_to_include{subj_i};
@@ -23,7 +22,7 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	
 	% load dataset
-	EEG = EEG_checkset( EEG );
+	EEG = eeg_checkset( EEG );
 	old_setname = EEG.setname;
 	
 	% exclude channels on arm
@@ -35,7 +34,7 @@ for subj_i = 1:length(subjs_to_include)
 % 	window_type = 'blackman';
 % 	filt_ord = pop_firwsord(window_type, EEG.srate, cutoff_dist);
 % 	EEG = pop_firws(EEG, 'fcutoff', filt_freq/EEG.srate, 'ftype', 'highpass', 'wtype', window_type, 'forder', filt_ord);
-% 	
+ 	
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
 		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);
@@ -48,7 +47,7 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_chanedit(EEG, 'eval','chans = pop_chancenter( chans, [],[]);');
 	
 	% save set
-	EEG.setname = [setname_prefix,'_64'];
+	EEG.setname = [setname_prefix,'_',num2str(new_srate)];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
-	
+
 end

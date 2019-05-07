@@ -1,5 +1,5 @@
 clear; clc; close all;
-scriptdir = 'C:\Users\Rob\Desktop\darts\';
+scriptdir = '/home/rgougelet/Desktop/darts';
 cd(scriptdir)
 warning('off','MATLAB:rmpath:DirNotFound')
 addpath('.\eeglab13_6_5b')
