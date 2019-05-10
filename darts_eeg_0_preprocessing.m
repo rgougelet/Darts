@@ -1,7 +1,8 @@
 % how the data would be converted to lower sample rate
 % not necessary if data shared already downsampled
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/darts';
+% script_dir = '/data/mobi/Darts/Analysis/darts';
+script_dir = 'C:\Users\Rob\Desktop\darts';
 cd(script_dir);
 rmpath('/data/common/matlab/eeglab')
 addpath('./eeglab13_6_5b')
@@ -12,7 +13,7 @@ subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
 
 % user input
-new_srate = 512;
+new_srate = 32;
 
 for subj_i = 1:length(subjs_to_include)
 	start = tic;
@@ -49,5 +50,4 @@ for subj_i = 1:length(subjs_to_include)
 	% save set
 	EEG.setname = [setname_prefix,'_',num2str(new_srate)];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
-
 end
