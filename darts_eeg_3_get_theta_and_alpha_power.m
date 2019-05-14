@@ -8,7 +8,7 @@ addpath(data_dir);
 % user input
 srate = 64;
 chan_labs = {'Fz','Cz','Pz','Oz'};
-freq_labs = {'theta', 'alpha'};
+freq_labs = {'theta', 'alpha', 'gamma'};
 interval_labs = {'encoding','maintenance', 'recall'};
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
@@ -37,7 +37,8 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	EEG_theta = pop_eegfiltnew(EEG, 3, 7);
 	EEG_alpha = pop_eegfiltnew(EEG, 8, 12);
-	EEGs = {EEG_theta,EEG_alpha};
+	EEG_gamma = pop_eegfiltnew(EEG, 21, 31);
+	EEGs = {EEG_theta,EEG_alpha, EEG_gamma};
 	load([data_dir, subj_id,'_eeg_64_latencys'])
 	
 	% correct data collection issues
@@ -80,10 +81,14 @@ for subj_i = 1:length(subjs_to_include)
 				cue_latency_i = cue_event_latencys(eeg_trial_i);
 				end_latency_i = end_event_latencys(eeg_trial_i);
 % 				encode_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,start_latency_i:(start_latency_i+srate))),2)';
-				maint_baseline = mean((EEG.data(chan_lab_i,round(start_latency_i-0.2*srate):start_latency_i)).^2,2)';
-				maint_trial_amps(end+1) = sum((EEG.data(chan_lab_i,start_latency_i:cue_latency_i)).^2,2)'-maint_baseline;
-				recall_baseline = mean((EEG.data(chan_lab_i,round(cue_latency_i-0.2*srate):cue_latency_i)).^2,2)';
-				recall_trial_amps(end+1) = sum((EEG.data(chan_lab_i,cue_latency_i:end_latency_i)).^2,2)'-recall_baseline;
+				maint_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i;
+				maint_baseline = mean((EEG.data(chan_lab_i,maint_baseline_inds)).^2,2)'/(length(maint_baseline_inds)/srate);
+				maint_inds = start_latency_i:cue_latency_i;
+				maint_trial_amps(end+1) = (srate/length(maint_inds))*sum((EEG.data(chan_lab_i,maint_inds)).^2,2)'-maint_baseline;
+				recall_baseline_inds = round(cue_latency_i-0.2*srate):cue_latency_i;
+				recall_baseline = mean((EEG.data(chan_lab_i,recall_baseline_inds)).^2,2)'/(length(recall_baseline_inds)/srate);
+				recall_inds = cue_latency_i:end_latency_i;
+				recall_trial_amps(end+1) = (srate/length(recall_inds))*sum((EEG.data(chan_lab_i,recall_inds)).^2,2)'-recall_baseline;
 			end
 			
 % 			encode_chan_freq_amps = xlsx.(['encoding_',chan_lab,'_',freq_lab]);
@@ -96,6 +101,8 @@ for subj_i = 1:length(subjs_to_include)
 				recall_amps(eeg_to_snap_inds(trial_amp_i)) = recall_trial_amps(trial_amp_i);
 			end
 % 			xlsx.(['encoding_',chan_lab,'_',freq_lab]) = encode_chan_freq_amps;
+% 			maint_amps(isnan(maint_amps))=nanmean(maint_amps);
+% 			recall_amps(isnan(recall_amps))=nanmean(recall_amps);
 			xlsx.(['maintenance_',chan_lab,'_',freq_lab]) = maint_amps;
 			xlsx.(['recall_',chan_lab,'_',freq_lab]) = recall_amps;
 	
@@ -106,17 +113,20 @@ end
 %%
 % parsave('behav+eeg.mat', xlsx, 'xlsx')
 
-%% behav+eeg regression, no interaction 
+%% make regression vars
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
 throwtime = xlsx.throwtime(non_outlier_inds);
 delay = xlsx.delaystilltime(non_outlier_inds);
-pres = (xlsx.pres(non_outlier_inds));
+pres = categorical(xlsx.pres(non_outlier_inds));
 dists = xlsx.distance(non_outlier_inds).^(1/2);
 subjs = categorical(xlsx.subject(non_outlier_inds));
 
+delay = (delay-nanmean(delay))/nanstd(delay);
+dists = (dists-nanmean(dists))/nanstd(dists);
+throwtime = (throwtime-nanmean(throwtime))/nanstd(throwtime);
 
 chan_labs = {'Fz','Cz','Pz','Oz'};
-freq_labs = {'theta', 'alpha'};
+freq_labs = {'theta', 'alpha','gamma'};
 interval_labs = {'maintenance', 'recall'};
 varnames = {'dists'; 'throwtime'; 'delay';'pres'};
 for chan_lab = chan_labs
@@ -124,23 +134,42 @@ for chan_lab = chan_labs
 		for interval_lab = interval_labs
 			varname = [interval_lab{:},'_',chan_lab{:},'_',freq_lab{:}];
 			varnames{end+1} = varname;
-			eval([varname,' = xlsx.',varname,'(non_outlier_inds);']);
+% 			eval([varname,' = xlsx.',varname,'(non_outlier_inds);'])
+
+			eval([varname,' = (xlsx.',varname,'(non_outlier_inds)-nanmean(xlsx.',varname,'(non_outlier_inds)))/nanstd(xlsx.',varname,'(non_outlier_inds));'])
 		end
 	end
 end
 
+%% correlation
+
 eval( ['array = [', strjoin(varnames,','),'];'] );
+nans = sum(isnan(array),2) > 0;
+array = array(~nans,:);
 [rho,pval] = corr(array, 'rows','complete');
 heatmap(rho)
 heatmap(pval)
-%%
-eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+%% canonical correlation
+% X = array(:,1:4);
+% Y = array(:,5:end);
+% [A,B,r,U,V] = canoncorr(X,Y)
+% plot(U(:,1),V(:,1),'.')
 
+%% stepwise
+stepwise(array(:,2:end),array(:,1))
+
+%% partial least squares regression
+[XL,YL,XS,YS,BETA,PCTVAR,MSE,stats]= plsregress(array(:,2:end),array(:,1),19);
+plot(1:length(PCTVAR),cumsum(100*PCTVAR(2,:)),'-bo');
+
+%% behav+eeg regression, no interaction 
+eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+reg_table = rmmissing(reg_table);
 fit_eeg = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts', 'on')
 results = sortrows(anova(fit_eeg),5,'descend')
 % results = table2array(anova(fit_eeg));
 % results(results(:,5) < 0.05)
-fit_eeg = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
+% fit_eeg = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
 % 
 % thresholds = 0.05./(height(results):-1:1)'
 % sum(results.pValue<thresholds)
