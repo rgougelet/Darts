@@ -1,13 +1,15 @@
 clear; close all; clc;
-script_dir = 'C:\Users\Rob\Desktop\darts\';
+% script_dir = '/data/mobi/Darts/Analysis/darts';
+script_dir = 'C:\Users\Rob\Desktop\darts';
 cd(script_dir);
-addpath('.\eeglab13_6_5b')
-data_dir = '.\data\';
+rmpath('/data/common/matlab/eeglab')
+addpath('./eeglab2019_0')
+data_dir = './data/';
 addpath(data_dir)
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
-srate = 64;
+srate = 512;
 
 for subj_i = 1:length(subjs_to_include)
 	subj_id = subjs_to_include{subj_i};

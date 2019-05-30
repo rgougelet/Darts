@@ -4,16 +4,17 @@ clear; close all; clc;
 % script_dir = '/data/mobi/Darts/Analysis/darts';
 script_dir = 'C:\Users\Rob\Desktop\darts';
 cd(script_dir);
-rmpath('/data/common/matlab/eeglab')
-addpath('./eeglab13_6_5b')
+% rmpath('/data/common/matlab/eeglab')
+addpath('./eeglab2019_0')
 data_dir = './data/';
 addpath(data_dir)
 
-subjs_to_include = {'571', '579', '580', ...
-	'607', '608', '616', '619', '621', '627', '631'};
-
+% subjs_to_include = {'571', '579', ...
+% 	'607', '608', '616', '619', '621', '627', '631', '580'};
+subjs_to_include = {'579', ...
+	'607', '608', '616', '619', '621', '627', '631', '580'};
 % user input
-new_srate = 32;
+new_srate = 512;
 
 for subj_i = 1:length(subjs_to_include)
 	start = tic;
@@ -23,11 +24,13 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	
 	% load dataset
-	EEG = eeg_checkset( EEG );
 	old_setname = EEG.setname;
 	
 	% exclude channels on arm
 	EEG = pop_select( EEG,'nochannel', {'EXT7', 'EXT8', 'EXG7', 'EXG8'});
+	
+		% optimize head center
+	EEG = pop_chanedit(EEG, 'eval','chans = pop_chancenter( chans, [],[]);');
 	
 % 	% high pass filter the data
 % 	filt_freq = 0.6;
@@ -44,10 +47,7 @@ for subj_i = 1:length(subjs_to_include)
 	% apply cleanline
 	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
 	
-	% optimize head center
-	EEG = pop_chanedit(EEG, 'eval','chans = pop_chancenter( chans, [],[]);');
-	
 	% save set
-	EEG.setname = [setname_prefix,'_',num2str(new_srate)];
+	EEG.setname = [old_setname,'_',num2str(new_srate)];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end
