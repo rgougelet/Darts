@@ -39,7 +39,7 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	EEG_theta = pop_eegfiltnew(EEG, 3, 7);
 	EEG_alpha = pop_eegfiltnew(EEG, 8, 12);
-	EEG_gamma = pop_eegfiltnew(EEG, 21, 31);
+	EEG_gamma = pop_eegfiltnew(EEG, 21, 55);
 	EEGs = {EEG_theta,EEG_alpha, EEG_gamma};
 	load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencys'])
 	
@@ -76,53 +76,33 @@ for subj_i = 1:length(subjs_to_include)
 			freq_lab = freq_labs{freq_lab_i};
 			EEG = EEGs{freq_lab_i};
 			EEG.data = abs(hilbert(EEG.data)).^2;
-% 			encode_trial_amps = [];
 			maint_trial_amps = [];
 			recall_trial_amps = [];
+			
 			for eeg_trial_i = 1:n_eeg_trials
 				start_latency_i = start_event_latencys(eeg_trial_i);
 				cue_latency_i = cue_event_latencys(eeg_trial_i);
 				end_latency_i = end_event_latencys(eeg_trial_i);
-% 				encode_trial_amps(end+1) = mean(abs(EEG.data(chan_lab_i,start_latency_i:(start_latency_i+srate))),2)';
 
 				maint_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i;
-% 				maint_baseline = sum(EEG.data(chan_lab_i,maint_baseline_inds),2);
 				maint_baseline = mean(EEG.data(chan_lab_i,maint_baseline_inds),2);
-% 				maint_baseline = mean(EEG.data(chan_lab_i,maint_baseline_inds),2)/length(maint_baseline_inds);
-
 				maint_inds = start_latency_i:cue_latency_i;
-% 				maint_trial = sum(EEG.data(chan_lab_i,maint_inds),2);
 				maint_trial = mean(EEG.data(chan_lab_i,maint_inds),2);
-% 				maint_trial = sum(EEG.data(chan_lab_i,maint_inds),2)/length(maint_inds);
-				
 				maint_trial_amps(end+1) = maint_trial-maint_baseline;
 				
 				recall_baseline_inds = round(cue_latency_i-0.2*srate):cue_latency_i;
-% 				recall_baseline = sum(EEG.data(chan_lab_i,recall_baseline_inds),2);
 				recall_baseline = mean(EEG.data(chan_lab_i,recall_baseline_inds),2);
-% 				recall_baseline = sum(EEG.data(chan_lab_i,recall_baseline_inds),2)/length(recall_baseline_inds);
-				
 				recall_inds = cue_latency_i:end_latency_i;
-% 				recall_trial = sum(EEG.data(chan_lab_i,recall_inds),2);
 				recall_trial = mean(EEG.data(chan_lab_i,recall_inds),2);
-% 				recall_trial = sum(EEG.data(chan_lab_i,recall_inds),2)/length(recall_inds);
-				
 				recall_trial_amps(end+1) = recall_trial-recall_baseline;
-
 			end
 			
-% 			encode_chan_freq_amps = xlsx.(['encoding_',chan_lab,'_',freq_lab]);
 			maint_amps = xlsx.(['maintenance_',chan_lab,'_',freq_lab]);
 			recall_amps = xlsx.(['recall_',chan_lab,'_',freq_lab]);
-
 			for trial_amp_i = 1:n_eeg_trials
-% 				encode_chan_freq_amps(eeg_to_snap_inds(trial_amp_i)) = encode_trial_amps(trial_amp_i);
 				maint_amps(eeg_to_snap_inds(trial_amp_i)) = maint_trial_amps(trial_amp_i);
 				recall_amps(eeg_to_snap_inds(trial_amp_i)) = recall_trial_amps(trial_amp_i);
 			end
-% 			xlsx.(['encoding_',chan_lab,'_',freq_lab]) = encode_chan_freq_amps;
-% 			maint_amps(isnan(maint_amps))=nanmean(maint_amps);
-% 			recall_amps(isnan(recall_amps))=nanmean(recall_amps);
 			xlsx.(['maintenance_',chan_lab,'_',freq_lab]) = maint_amps;
 			xlsx.(['recall_',chan_lab,'_',freq_lab]) = recall_amps;
 	
@@ -132,86 +112,158 @@ end
 
 %% make regression vars
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
-throwtime = xlsx.throwtime(non_outlier_inds);
+throwtime = (xlsx.throwtime(non_outlier_inds));
 delay = xlsx.delaystilltime(non_outlier_inds);
 pres = categorical(xlsx.pres(non_outlier_inds));
-dists = xlsx.distance(non_outlier_inds);
+dists = xlsx.distance(non_outlier_inds).^(1/2);
 subjs = categorical(xlsx.subject(non_outlier_inds));
+
+% convert to z scores
 delay = (delay-nanmean(delay))/nanstd(delay);
 dists = (dists-nanmean(dists))/nanstd(dists);
 throwtime = (throwtime-nanmean(throwtime))/nanstd(throwtime);
 
+% create workspace variables for regression
 chan_labs = {'Fz','Cz','Pz','Oz'};
 freq_labs = {'theta', 'alpha','gamma'};
 interval_labs = {'maintenance', 'recall'};
-varnames = {'dists'; 'throwtime'; 'delay';'pres'};
+varnames = {'dists'; 'throwtime'; 'delay';'pres'}; % turn off for canonical corr
+% varnames = {}; % turn on for canonical corr
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
 		for interval_lab = interval_labs
 			varname = [interval_lab{:},'_',chan_lab{:},'_',freq_lab{:}];
 			varnames{end+1} = varname;
-% 			eval([varname,' = xlsx.',varname,'(non_outlier_inds);'])
 			eval([varname,' = (xlsx.',varname,'(non_outlier_inds)-nanmean(xlsx.',varname,'(non_outlier_inds)))/nanstd(xlsx.',varname,'(non_outlier_inds));'])
-% 			eval(['figure;hist(',varname,')'])
 		end
 	end
 end
 
-% behav+eeg regression
+%% behav+eeg regression
 eval( ['reg_table = table(', strjoin(varnames,','),');'] );
-% dists = 1+(1:2000)';
-% dists2 = 3*(2:2001)';
-% reg_table = table(dists,dists2)
-mdl_basic = fitlm(reg_table,'ResponseVar', 'dists');
+
 mdl_ints = fitlm(reg_table,'interactions','ResponseVar', 'dists');
+plotResiduals(mdl_ints, 'Probability')
 
 mdl_robust = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
-% mdl1 = fitlm(reg_table,'dists ~ recall_Cz_gamma:recall_Pz_gamma + maintenance_Oz_theta:maintenance_Oz_gamma', 'RobustOpts','on')
-% mdl = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
-% sw_mdl_r_squared = stepwiselm(reg_table,'interactions','ResponseVar', 'dists', 'Criterion', 'AdjRsquared')
+plotResiduals(mdl_robust, 'Probability')
+plotResiduals(mdl_robust)
+mdl = stepwiselm(reg_table,'ResponseVar', 'dists')
+mdl = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
 
-% plotResiduals(mdl1, 'Probability')
-% results = sortrows(anova(mdl1),5,'descend')
+plot(reg_table.dists,predict(mdl_robust, reg_table),'.')
 
-% hist(mdl1.Residuals.Raw)
+plot(reg_table.dists,mdl_robust.Residuals.Raw,'.')
+hist(mdl_robust.Residuals.Raw)
+results = sortrows(anova(mdl1),5,'descend');
 
-%%
-mad_ratios = [];
-rmse_ratios = [];
-rs = [];
-for fold = 1:height(reg_table)
+
+%% leave-one-out crossvalidation
+% loo_mads = [];
+% loo_rmses = []; 
+% loo_rs = [];
+% eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+% for fold = 1:height(reg_table)
+% 	fold
+% 	eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+% 	reg_table(fold,:) = [];
+% 	loo_mdl = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
+% 	loo_rs = [loo_rs; loo_mdl.Rsquared.Adjusted];
+% 	loo_mads = [loo_mads; nanmedian(abs(loo_mdl.Residuals.Raw))];
+% 	loo_rmses = [loo_rmses; loo_mdl.RMSE];
+% end
+
+%% shuffle and split crossvalidation
+eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+nfolds = 10000;
+training_mads = zeros(nfolds,1);
+test_mads = zeros(nfolds,1);
+training_rmses = zeros(nfolds,1);
+test_rmses = zeros(nfolds,1);
+adj_rs = zeros(nfolds,1);
+training_resids = zeros(nfolds,1201);
+training_inds = zeros(nfolds,1201);
+
+test_resids = zeros(nfolds,133);
+test_inds = zeros(nfolds,133);
+
+for fold = 1:nfolds
 	fold
-	eval( ['reg_table = table(', strjoin(varnames,','),');'] );
-% 	reg_table.rand = randperm(length(reg_table.dists))';
-% 	reg_table = sortrows(reg_table, width(reg_table));
-% 	reg_table = removevars(reg_table,'rand');
-	reg_table(fold,:) = [];
-% 	test_data = reg_table(1:133,:);
-% 	training_data = reg_table(134:end,:);
-	loo_mdl = fitlm(reg_table,'interactions','ResponseVar', 'dists');
-	rs = [rs; loo_mdl.Rsquared.Adjusted];
-% 	hist(reg_table.dists)
-% 	hist(training_mdl.Residuals.Raw)
-% 		hist(test_resids)
-
-	training_mad = nanmedian(abs(training_mdl.Residuals.Raw));
-	test_resids = test_data.dists-predict(training_mdl, test_data);
-	test_mad = nanmedian(abs(test_resids));
-	mad_ratios = [mad_ratios; training_mad/test_mad];
 	
-	training_rmse = training_mdl.RMSE;
-	test_rmse = sqrt(nansum(test_resids).^2);
-	rmse_ratios = [rmse_ratios; training_rmse/test_rmse];
-% 	y = nansum((test_data.dists-nanmean(test_data.dists)).^2);
-% 	g = nansum((test_data.dists-predict(mdl1, test_data)).^2);
-% 	r_squared = 1 - (g/y)
-% 	mdl1.mse
-% 	rs = [rs; corr(test_data.dists,predict(mdl1, test_data), 'rows', 'complete', 'type', 'Pearson')];
+	reg_table.inds = (1:length(reg_table.dists))';
+	reg_table.rand = randperm(length(reg_table.dists))';
+	reg_table = sortrows(reg_table, width(reg_table));
+	reg_table = removevars(reg_table,'rand');
+	test_inds(fold,:)= reg_table.inds(1:133);
+	training_inds(fold,:)= reg_table.inds(134:end);
+	reg_table = removevars(reg_table,'inds');
 
-% 	rhos = [rhos; corr(test_data.dists,predict(mdl1, test_data), 'rows', 'complete', 'type', 'Spearman')];
-% 	sqrt(nanmean((test_data.dists-predict(mdl1, test_data)).^2))
-% 	nanstd(test_data.dists)
+	test_data = reg_table(1:133,:);
+	training_data = reg_table(134:end,:);
+	training_mdl = fitlm(training_data,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
+	training_resids(fold,:) = training_mdl.Residuals.Raw;
+	test_resids(fold,:) = test_data.dists-predict(training_mdl, test_data);
+	adj_rs(fold) = training_mdl.Rsquared.Adjusted;
+
 end
+%%
+	% median absolute difference
+% 	training_mads(fold) = nanmedian(abs(training_mdl.Residuals.Raw));
+% 	test_mads(fold) = nanmedian(abs(test_resids(fold,:)));
+	
+	% root-mean-square error
+% 	training_rmses(fold) = training_mdl.RMSE;
+% 	test_rmses(fold) = sqrt(nanmean(test_resids(fold,:).^2));
+
+%% canonical correlation analysis
+% X = [dists,throwtime,delay, pres];
+% for col = 1:size(X,2)
+% 	col_mean = nanmean(X(:,col));
+% 	for row = 1:size(X,1)
+% 		if isnan(X(row,col))
+% 			X(row,col) = col_mean;
+% 		end
+% 	end
+% end
+% eval( ['Y = [', strjoin(varnames,','),'];'] );
+% for col = 1:size(Y,2)
+% 	col_mean = nanmean(Y(:,col));
+% 	for row = 1:size(Y,1)
+% 		if isnan(Y(row,col))
+% 			Y(row,col) = col_mean;
+% 		end
+% 	end
+% end
+% 
+%  [A,B,R,U,V,STATS] = canoncorr(X,Y);
+%  figure
+%  plot(U(:,1),V(:,1),'.')
+%  [rho,pval] = corr(U(:,1),V(:,1), 'type','Pearson');
+%  canon_variate_x = A(:,1);
+%  canon_variate_y = B(:,1);
+% 
+%  plotnames_x = categorical({'dists'; 'throwtime'; 'delay';'pres'});
+% 
+%  bar(plotnames_x,canon_variate_x)
+%  plotnames = {};
+%  for chan_lab = chan_labs
+% 	for freq_lab = freq_labs
+% 		for interval_lab = interval_labs
+% 			plotname = [interval_lab{:},' ',chan_lab{:},' ',freq_lab{:}];
+% 			plotnames{end+1} = plotname;
+% 		end
+% 	end
+%  end
+%  [sorted_can_var_y, idx] = sort(canon_variate_y, 'descend','ComparisonMethod','abs');
+%  for i = 1:length(idx)
+% 	 sorted_plotnames(i) = plotnames(idx(i));
+%  end
+%   c = categorical(sorted_plotnames);
+% 	c = reordercats(c,sorted_plotnames);
+% 
+%  bar(c, sorted_can_var_y)
+%   [rho,pval]
+
 %%
 % fcn = @(reg_table) predict( fitlm(reg_table,'interactions','ResponseVar', 'dists','RobustOpts','on'), reg_table.dists);
 % perform cross-validation, and return average MSE across folds
@@ -254,12 +306,6 @@ end
 % heatmap(rho)
 % heatmap(pval)
 
-%% canonical correlation
-% X = array(:,1:4);
-% Y = array(:,5:end);
-% [A,B,r,U,V] = canoncorr(X,Y)
-% plot(U(:,1),V(:,1),'.')
-
 %% partial least squares regression
 % eval( ['array = [', strjoin(varnames,','),'];'] );
 % nans = sum(isnan(array),2) > 0;
@@ -299,13 +345,9 @@ end
 % mdl = fitlm(reg_table, ['dists ~ ',strjoin(varnames(2:end),' + ')], 'RobustOpts', 'on')
 % mdl = stepwiselm(reg_table, ['dists ~ ',strjoin(varnames(2:end),' + ')])
 
-
-% % [H,P,CI,STATS] = ttest2(Cz_thetas_abs,Cz_thetas_pres)
-% % [H,P,CI,STATS] = ttest2(Cz_thetas_abs,Cz_thetas_pres, 'vartype', 'unequal')
-
 %% behavioral regression
-varnames = {'dists', 'throwtime', 'delay', 'pres'};
-eval( ['reg_table = table(', strjoin(varnames,','),');'] );
-fit_behav = fitlm(reg_table,'interactions', 'ResponseVar', 'dists', 'RobustOpts', 'on')
+% varnames = {'dists', 'throwtime', 'delay', 'pres'};
+% eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+% fit_behav = fitlm(reg_table,'interactions', 'ResponseVar', 'dists', 'RobustOpts', 'on')
 % swfit_behav = stepwiselm(reg_table,'interactions', 'ResponseVar', 'dists', 'Criterion', 'AdjRsquared')
 % anova(swfit_behav)

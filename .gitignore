@@ -2,5 +2,7 @@ data/
 eeglab13_6_5b/
 eeglab14_1_2b/
 eeglab2019_0/
+results/
+
 *.asv
 trash/
