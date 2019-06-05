@@ -114,20 +114,20 @@ end
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
 throwtime = (xlsx.throwtime(non_outlier_inds));
 delay = xlsx.delaystilltime(non_outlier_inds);
-pres = categorical(xlsx.pres(non_outlier_inds));
-dists = xlsx.distance(non_outlier_inds).^(1/2);
-subjs = categorical(xlsx.subject(non_outlier_inds));
+pres = (xlsx.pres(non_outlier_inds));
+orig_dists = xlsx.distance(non_outlier_inds).^(1/2);
+subjs = (xlsx.subject(non_outlier_inds));
 
 % convert to z scores
 delay = (delay-nanmean(delay))/nanstd(delay);
-dists = (dists-nanmean(dists))/nanstd(dists);
+dists = (orig_dists-nanmean(orig_dists))/nanstd(orig_dists);
 throwtime = (throwtime-nanmean(throwtime))/nanstd(throwtime);
 
 % create workspace variables for regression
 chan_labs = {'Fz','Cz','Pz','Oz'};
 freq_labs = {'theta', 'alpha','gamma'};
 interval_labs = {'maintenance', 'recall'};
-varnames = {'dists'; 'throwtime'; 'delay';'pres'}; % turn off for canonical corr
+varnames = {'dists'; 'throwtime'; 'delay';'pres';'subjs'}; % turn off for canonical corr
 % varnames = {}; % turn on for canonical corr
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
@@ -138,14 +138,13 @@ for chan_lab = chan_labs
 		end
 	end
 end
-
-%% behav+eeg regression
 eval( ['reg_table = table(', strjoin(varnames,','),');'] );
 
-mdl_ints = fitlm(reg_table,'interactions','ResponseVar', 'dists');
-plotResiduals(mdl_ints, 'Probability')
-
+%% behav+eeg regression
+% eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+% mdl_ints = fitlm(reg_table,'interactions','ResponseVar', 'dists');
 mdl_robust = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
+
 plotResiduals(mdl_robust, 'Probability')
 plotResiduals(mdl_robust)
 mdl = stepwiselm(reg_table,'ResponseVar', 'dists')
@@ -207,6 +206,48 @@ for fold = 1:nfolds
 
 end
 %%
+high_test_inds = [];
+high_training_inds = [];
+
+for adj_r_i = 1:length(adj_rs)
+	if adj_rs(adj_r_i) > 0.84
+		high_training_inds = [high_training_inds, training_inds(adj_r_i,:)];
+		high_test_inds = [high_test_inds, test_inds(adj_r_i,:)];
+
+	end
+end
+%%
+% histogram(high_training_inds,'BinMethod','integer')
+[~, max_inds] = maxk(histcounts(high_training_inds,'BinMethod','integer'),134);
+max_table = reg_table(max_inds,:);
+max_table.pres = double(max_table.pres);
+non_max_table = reg_table;
+non_max_table(max_inds,:) = [];
+tabulate(categorical(max_table.pres))
+tabulate(categorical(max_table.subjs))
+tabulate(categorical(reg_table.subjs))
+
+ttest2(table2array(max_table),table2array(non_max_table))
+%%
+pres_inds = xlsx.pres(non_outlier_inds)==1;
+y_hat = predict(mdl_robust, reg_table);
+subplot(2,1,1);plot(reg_table.dists(~pres_inds),y_hat(~pres_inds),'ro'); axis(4*[-5,5,-5,5])
+subplot(2,1,2);plot(reg_table.dists(pres_inds),y_hat(pres_inds),'bo'); axis(4*[-5,5,-5,5])
+plot(reg_table.dists,y_hat,'bo'); axis([-5,5,-5,5]); hold on
+plot([-5, 5], [-5,5])
+
+orig_mean = nanmean(orig_dists);
+orig_sd = nanstd(orig_dists);
+z_errors = mdl_robust.Residuals.Raw;
+unz_errors = (z_errors+orig_mean).*orig_sd;
+median_z_error = nanmedian(abs(z_errors));
+median_unz_error = nanmedian(abs(unz_errors));
+hist(nanmedian(abs(mdl_robust.Residuals.Raw)))
+
+median(nanmedian(abs(training_resids),2))
+hist(nanmedian(abs(training_resids),2))
+hist(nanmedian(abs(test_resids),2))
+
 	% median absolute difference
 % 	training_mads(fold) = nanmedian(abs(training_mdl.Residuals.Raw));
 % 	test_mads(fold) = nanmedian(abs(test_resids(fold,:)));
