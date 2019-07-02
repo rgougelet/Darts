@@ -6,6 +6,8 @@ rmpath('/data/common/matlab/eeglab')
 addpath('./eeglab2019_0')
 data_dir = './data/';
 addpath(data_dir)
+eeglab;
+close all;
 
 % user input
 srate = 512;
@@ -112,22 +114,24 @@ end
 
 %% make regression vars
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
-throwtime = (xlsx.throwtime(non_outlier_inds));
-delay = xlsx.delaystilltime(non_outlier_inds);
-pres = (xlsx.pres(non_outlier_inds));
-orig_dists = xlsx.distance(non_outlier_inds).^(1/2);
+orig_throwtime = (xlsx.throwtime(non_outlier_inds));
+orig_delay = xlsx.delaystilltime(non_outlier_inds);
+pres = categorical(xlsx.pres(non_outlier_inds));
+orig_dists = xlsx.distance(non_outlier_inds);
+t_dists = orig_dists.^(1/2);
+
 subjs = (xlsx.subject(non_outlier_inds));
 
 % convert to z scores
-delay = (delay-nanmean(delay))/nanstd(delay);
-dists = (orig_dists-nanmean(orig_dists))/nanstd(orig_dists);
-throwtime = (throwtime-nanmean(throwtime))/nanstd(throwtime);
+delay = (orig_delay-nanmean(orig_delay))/nanstd(orig_delay);
+dists = (t_dists-nanmean(t_dists))/nanstd(t_dists);
+throwtime = (orig_throwtime-nanmean(orig_throwtime))/nanstd(orig_throwtime);
 
 % create workspace variables for regression
 chan_labs = {'Fz','Cz','Pz','Oz'};
 freq_labs = {'theta', 'alpha','gamma'};
 interval_labs = {'maintenance', 'recall'};
-varnames = {'dists'; 'throwtime'; 'delay';'pres';'subjs'}; % turn off for canonical corr
+varnames = {'dists'; 'throwtime'; 'delay';'pres'}; % turn off for canonical corr
 % varnames = {}; % turn on for canonical corr
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
@@ -144,18 +148,21 @@ eval( ['reg_table = table(', strjoin(varnames,','),');'] );
 % eval( ['reg_table = table(', strjoin(varnames,','),');'] );
 % mdl_ints = fitlm(reg_table,'interactions','ResponseVar', 'dists');
 mdl_robust = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
+results = sortrows(anova(mdl_robust),5,'descend');
+writetable(results,'full_model_results.xls','WriteRowNames',true)
 
-plotResiduals(mdl_robust, 'Probability')
-plotResiduals(mdl_robust)
-mdl = stepwiselm(reg_table,'ResponseVar', 'dists')
-mdl = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
-
-plot(reg_table.dists,predict(mdl_robust, reg_table),'.')
-
-plot(reg_table.dists,mdl_robust.Residuals.Raw,'.')
-hist(mdl_robust.Residuals.Raw)
-results = sortrows(anova(mdl1),5,'descend');
-
+%%
+% plotResiduals(mdl_robust, 'Probability')
+% plotResiduals(mdl_robust)
+% mdl = stepwiselm(reg_table,'ResponseVar', 'dists')
+% mdl = stepwiselm(reg_table,'interactions','ResponseVar', 'dists')
+% 
+% plot(reg_table.dists,predict(mdl_robust, reg_table),'.')
+% 
+% plot(reg_table.dists,mdl_robust.Residuals.Raw,'.')
+% hist(mdl_robust.Residuals.Raw)
+% results = sortrows(anova(mdl1),5,'descend');
+nanmedian(abs(mdl_robust.Residuals.Raw))
 
 %% leave-one-out crossvalidation
 % loo_mads = [];
@@ -236,17 +243,28 @@ subplot(2,1,2);plot(reg_table.dists(pres_inds),y_hat(pres_inds),'bo'); axis(4*[-
 plot(reg_table.dists,y_hat,'bo'); axis([-5,5,-5,5]); hold on
 plot([-5, 5], [-5,5])
 
+irl_std = nanstd(orig_dists)*8.5;
 orig_mean = nanmean(orig_dists);
 orig_sd = nanstd(orig_dists);
-z_errors = mdl_robust.Residuals.Raw;
-unz_errors = (z_errors+orig_mean).*orig_sd;
+z_errors = mdl_robust.Residuals.Raw; % in z units
+unz_errors = ((z_errors+orig_mean).*orig_sd).^2; % in original paper units
+irl_unz_errors = unz_errors*8.5; % irl units
+
 median_z_error = nanmedian(abs(z_errors));
 median_unz_error = nanmedian(abs(unz_errors));
-hist(nanmedian(abs(mdl_robust.Residuals.Raw)))
+irl_median_unz_error = median_unz_error*8.5; % convert paper units to irl units
 
 median(nanmedian(abs(training_resids),2))
 hist(nanmedian(abs(training_resids),2))
 hist(nanmedian(abs(test_resids),2))
+
+training_mads = nanmedian(abs(training_resids),2);
+test_mads = nanmedian(abs(test_resids),2);
+mad_ratios = training_mads./test_mads;
+figure;
+subplot(3,1,1); hist(training_mads,30); xlim([0 1.5])
+subplot(3,1,2); hist(test_mads,30); xlim([0 1.5])
+subplot(3,1,3); hist(mad_ratios,30); xlim([0 1.5])
 
 	% median absolute difference
 % 	training_mads(fold) = nanmedian(abs(training_mdl.Residuals.Raw));
