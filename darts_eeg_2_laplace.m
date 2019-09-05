@@ -1,5 +1,4 @@
 clear; close all; clc;
-% script_dir = '/data/mobi/Darts/Analysis/darts';
 script_dir = 'C:\Users\Rob\Desktop\darts';
 cd(script_dir);
 rmpath('/data/common/matlab/eeglab')

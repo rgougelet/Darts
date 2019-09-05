@@ -1,24 +1,23 @@
 clear; close all; clc;
-% script_dir = '/data/mobi/Darts/Analysis/darts';
 script_dir = 'C:\Users\Rob\Desktop\darts';
 cd(script_dir);
 rmpath('/data/common/matlab/eeglab')
 addpath('./eeglab2019_0')
 data_dir = './data/';
 addpath(data_dir)
+eeglab;
+close all;
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
 srate = 512;
 
-% eeglab;
-close all;
 % Find trial start and end times
 for subj_i = 1:length(subjs_to_include)
 	
+    % load dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = [subj_id,'_eeg_',num2str(srate),'.set'];
-	
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	
 	% init
@@ -37,7 +36,7 @@ for subj_i = 1:length(subjs_to_include)
 		
 		% get event type string
 		event_type = num2str(EEG.event(event_ind).type);
-		if length(event_type) ~= 7
+		if length(event_type) ~= 7 % skip superfluous events
 			continue
 		end
 		
