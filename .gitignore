@@ -1,6 +1,6 @@
-data/
-eeglab/
 results/
 
+*.set
+*.fdt
 *.asv
 trash/

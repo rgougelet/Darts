@@ -1,14 +1,14 @@
 clear; close all; clc;
-script_dir = 'C:\Users\Rob\Desktop\darts';
+script_dir = '/home/rgougelet/Desktop/darts/';
 cd(script_dir);
 rmpath('/data/common/matlab/eeglab')
-addpath('./eeglab2019_0')
-data_dir = './data/';
-addpath(data_dir)
+addpath('./eeglab14_1_2b')
 eeglab;
 close all;
+data_dir = './data/';
+addpath(data_dir)
 
-subjs_to_include = {'579', ...
+subjs_to_include = {'571','579', ...
 	'607', '608', '616', '619', '621', '627', '631', '580'};
 
 % user input
@@ -34,7 +34,7 @@ for subj_i = 1:length(subjs_to_include)
 	end
 	
 	% apply cleanline
-	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
+% 	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
 	
 	% save set
 	EEG.setname = [old_setname,'_',num2str(new_srate)];

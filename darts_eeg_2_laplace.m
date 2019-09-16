@@ -1,10 +1,12 @@
 clear; close all; clc;
-script_dir = 'C:\Users\Rob\Desktop\darts';
+script_dir = '/home/rgougelet/Desktop/Darts/Analysis/Analysis_Sept-2019/darts/';
 cd(script_dir);
 rmpath('/data/common/matlab/eeglab')
-addpath('./eeglab2019_0')
+addpath('./eeglab14_1_2b')
 data_dir = './data/';
 addpath(data_dir)
+eeglab;
+close all;
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};

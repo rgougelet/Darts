@@ -1,8 +1,8 @@
 clear; close all; clc;
-script_dir = 'C:\Users\Rob\Desktop\darts';
+script_dir = '/home/rgougelet/Desktop/Darts/Analysis/Analysis_Sept-2019/darts/';
 cd(script_dir);
 rmpath('/data/common/matlab/eeglab')
-addpath('./eeglab2019_0')
+addpath('./eeglab14_1_2b')
 data_dir = './data/';
 addpath(data_dir)
 eeglab;
@@ -22,7 +22,7 @@ headers = txt(1,:);
 for k=1:numel(headers)
 	xlsx.(headers{k})=num(:,k) ;
 end
-
+%%
 % initialize eeg columns to add to the behav columns
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
@@ -46,8 +46,8 @@ for subj_i = 1:length(subjs_to_include)
 	
 	% correct data collection issues
 	% the problem is there are some trials in the
-	% xls file that are not in eeg
-    load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencys'])
+	% xlsx file that are not in eeg
+   load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencys'])
 	n_snap_trials = sum(xlsx.subject == str2double(subj_id));
 	n_eeg_trials = length(end_event_latencys);
 	eeg_trial_strs = str2num(end_event_strings(:,1:4)); % ignore warning, use str2num
@@ -79,43 +79,46 @@ for subj_i = 1:length(subjs_to_include)
 			freq_lab = freq_labs{freq_lab_i};
 			EEG = EEGs{freq_lab_i};
 			EEG.data = abs(hilbert(EEG.data)).^2;
-			maint_trial_amps = [];
-			recall_trial_amps = [];
+			delay_trial_amps = [];
+			pre_throw_trial_amps = [];
 			
 			for eeg_trial_i = 1:n_eeg_trials
-				start_latency_i = start_event_latencys(eeg_trial_i);
+				start_latency_i = start_event_latencys(eeg_trial_i); % "latency" means sample index
 				cue_latency_i = cue_event_latencys(eeg_trial_i);
 				end_latency_i = end_event_latencys(eeg_trial_i);
 
-				maint_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i;
-				maint_baseline = mean(EEG.data(chan_lab_i,maint_baseline_inds),2);
-				maint_inds = start_latency_i:cue_latency_i;
-				maint_trial = mean(EEG.data(chan_lab_i,maint_inds),2);
-				maint_trial_amps(end+1) = maint_trial-maint_baseline;
+				delay_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i;
+				delay_baseline = mean(EEG.data(chan_lab_i,delay_baseline_inds),2);
+				delay_inds = start_latency_i:cue_latency_i;
+				delay_trial = mean(EEG.data(chan_lab_i,delay_inds),2);
+				delay_trial_amps(end+1) = delay_trial-delay_baseline;
 				
-				recall_baseline_inds = round(cue_latency_i-0.2*srate):cue_latency_i;
-				recall_baseline = mean(EEG.data(chan_lab_i,recall_baseline_inds),2);
-				recall_inds = cue_latency_i:end_latency_i;
-				recall_trial = mean(EEG.data(chan_lab_i,recall_inds),2);
-				recall_trial_amps(end+1) = recall_trial-recall_baseline;
+				pre_throw_baseline_inds = round(cue_latency_i-0.2*srate):cue_latency_i;
+				pre_throw_baseline = mean(EEG.data(chan_lab_i,pre_throw_baseline_inds),2);
+				pre_throw_inds = cue_latency_i:end_latency_i;
+				pre_throw_trial = mean(EEG.data(chan_lab_i,pre_throw_inds),2);
+				pre_throw_trial_amps(end+1) = pre_throw_trial-pre_throw_baseline;
 			end
 			
-			maint_amps = xlsx.(['delay_',chan_lab,'_',freq_lab]);
-			recall_amps = xlsx.(['pre_throw',chan_lab,'_',freq_lab]);
+			% assign amplitudes to matching trial
+			delay_amps = xlsx.(['delay_',chan_lab,'_',freq_lab]);
+			pre_throw_amps = xlsx.(['pre_throw_',chan_lab,'_',freq_lab]);
 			for trial_amp_i = 1:n_eeg_trials
-				maint_amps(eeg_to_snap_inds(trial_amp_i)) = maint_trial_amps(trial_amp_i);
-				recall_amps(eeg_to_snap_inds(trial_amp_i)) = recall_trial_amps(trial_amp_i);
+				delay_amps(eeg_to_snap_inds(trial_amp_i)) = delay_trial_amps(trial_amp_i);
+				pre_throw_amps(eeg_to_snap_inds(trial_amp_i)) = pre_throw_trial_amps(trial_amp_i);
 			end
-			xlsx.(['delay_',chan_lab,'_',freq_lab]) = maint_amps;
-			xlsx.(['pre_throw',chan_lab,'_',freq_lab]) = recall_amps;
+			xlsx.(['delay_',chan_lab,'_',freq_lab]) = delay_amps;
+			xlsx.(['pre_throw_',chan_lab,'_',freq_lab]) = pre_throw_amps;
 	
 		end
 	end	
 end
-
+% parsave('xlsx.mat',xlsx,'xlsx')
 %% make regression vars
+cd(script_dir)
+load('xlsx.mat')
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
-orig_throwtime = (xlsx.throwtime(non_outlier_inds));
+orig_throwtime = xlsx.throwtime(non_outlier_inds);
 orig_delay = xlsx.delaystilltime(non_outlier_inds);
 orig_dists = xlsx.distance(non_outlier_inds);
 t_dists = orig_dists.^(1/2);
@@ -123,7 +126,7 @@ pres = categorical(xlsx.pres(non_outlier_inds));
 subjs = (xlsx.subject(non_outlier_inds));
 
 % convert to z scores
-delay = (orig_delay-nanmean(orig_delay))/nanstd(orig_delay);
+delay_length = (orig_delay-nanmean(orig_delay))/nanstd(orig_delay);
 dists = (t_dists-nanmean(t_dists))/nanstd(t_dists);
 throwtime = (orig_throwtime-nanmean(orig_throwtime))/nanstd(orig_throwtime);
 
@@ -141,7 +144,7 @@ for chan_lab = chan_labs
 		end
 	end
 end
-eval( ['reg_table = table(', strjoin(varnames,','),');'] );
+eval( ['reg_table = table(', strjoin(varnames',','),');'] );
 
 %% behav+eeg regression
 mdl_robust = fitlm(reg_table,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
