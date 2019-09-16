@@ -1,7 +1,10 @@
 clear; close all; clc;
 script_dir = '/home/rgougelet/Desktop/Darts/Analysis/Analysis_Sept-2019/darts/';
 cd(script_dir);
+try
 rmpath('/data/common/matlab/eeglab')
+catch
+end
 addpath('./eeglab14_1_2b')
 data_dir = './data/';
 addpath(data_dir)
@@ -47,7 +50,7 @@ for subj_i = 1:length(subjs_to_include)
 	% correct data collection issues
 	% the problem is there are some trials in the
 	% xlsx file that are not in eeg
-   load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencys'])
+	load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencys'])
 	n_snap_trials = sum(xlsx.subject == str2double(subj_id));
 	n_eeg_trials = length(end_event_latencys);
 	eeg_trial_strs = str2num(end_event_strings(:,1:4)); % ignore warning, use str2num
@@ -57,8 +60,8 @@ for subj_i = 1:length(subjs_to_include)
 	eeg_to_snap_inds = 1:length(eeg_trial_strs);
 	if strcmp(subj_id, '580') % subj 580 missing first 10 trials
 		eeg_to_snap_inds = 10+(1:n_eeg_trials);
-    end
-    % account for these subjects w/ missing trials
+	end
+	% account for these subjects w/ missing trials
 	if strcmp(subj_id,'616') || strcmp(subj_id,'621') || strcmp(subj_id,'627')
 		eeg_to_snap_inds = [];
 		for eeg_i = 1:length(eeg_trial_strs)
@@ -71,7 +74,7 @@ for subj_i = 1:length(subjs_to_include)
 		end
 	end
 	eeg_to_snap_inds = eeg_to_snap_inds + find(xlsx.subject==str2double(subj_id),1) - 1;
-
+	
 	% retrieve this subjs trial-level amplitudes at desired chans and freqs
 	for chan_lab_i = 1:length(chan_labs)
 		chan_lab = chan_labs{chan_lab_i};
@@ -86,7 +89,7 @@ for subj_i = 1:length(subjs_to_include)
 				start_latency_i = start_event_latencys(eeg_trial_i); % "latency" means sample index
 				cue_latency_i = cue_event_latencys(eeg_trial_i);
 				end_latency_i = end_event_latencys(eeg_trial_i);
-
+				
 				delay_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i;
 				delay_baseline = mean(EEG.data(chan_lab_i,delay_baseline_inds),2);
 				delay_inds = start_latency_i:cue_latency_i;
@@ -109,14 +112,14 @@ for subj_i = 1:length(subjs_to_include)
 			end
 			xlsx.(['delay_',chan_lab,'_',freq_lab]) = delay_amps;
 			xlsx.(['pre_throw_',chan_lab,'_',freq_lab]) = pre_throw_amps;
-	
+			
 		end
-	end	
+	end
 end
 % parsave('xlsx.mat',xlsx,'xlsx')
 %% make regression vars
 cd(script_dir)
-load('xlsx.mat')
+% load('xlsx.mat')
 non_outlier_inds = (xlsx.distance < 6 & xlsx.throwtime < 5);
 orig_throwtime = xlsx.throwtime(non_outlier_inds);
 orig_delay = xlsx.delaystilltime(non_outlier_inds);
@@ -182,7 +185,7 @@ for fold = 1:nfolds
 	test_inds(fold,:)= reg_table.inds(1:133);
 	training_inds(fold,:)= reg_table.inds(134:end);
 	reg_table = removevars(reg_table,'inds');
-
+	
 	test_data = reg_table(1:133,:);
 	training_data = reg_table(134:end,:);
 	training_mdl = fitlm(training_data,'interactions','ResponseVar', 'dists', 'RobustOpts','on');

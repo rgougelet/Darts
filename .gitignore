@@ -1,6 +1,5 @@
-results/
-
 *.set
 *.fdt
 *.asv
+*.mat
 trash/
