@@ -2,4 +2,5 @@
 *.fdt
 *.asv
 *.mat
+*.m~
 trash/

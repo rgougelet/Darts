@@ -1,21 +1,23 @@
 clear; close all; clc;
-script_dir = '/home/rgougelet/Desktop/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
 cd(script_dir);
+warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
-addpath('./eeglab14_1_2b')
+addpath([script_dir,'/eeglab2019_0/'])
 eeglab;
 close all;
-data_dir = './data/';
+data_dir = [script_dir,'/data/'];
 addpath(data_dir)
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
 srate = 512;
 
-% Find trial start and end times
-for subj_i = 1:length(subjs_to_include)
+% find trial start and end times
+% parfor compatible
+parfor subj_i = 1:length(subjs_to_include)
 	
-    % load dataset
+	% load dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = [subj_id,'_eeg_',num2str(srate),'.set'];
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
@@ -48,8 +50,9 @@ for subj_i = 1:length(subjs_to_include)
 		end
 	end
 	
-	% find start trial events for every dart release event
+	% find prior start trial and cue onset events for every dart release event
 	for end_event_ind = end_event_inds
+		% trial start
 		start_event_ind = end_event_ind;
 		while true
 			start_event_ind = start_event_ind-1;
@@ -64,6 +67,8 @@ for subj_i = 1:length(subjs_to_include)
 		start_event_inds(end+1) = start_event_ind;
 		start_event_strings = [start_event_strings; start_event_type];
 		start_event_latencys(end+1) = round(EEG.event(start_event_ind).latency);
+		
+		% cue onset
 		cue_event_ind = end_event_ind;
 		while true
 			cue_event_ind = cue_event_ind-1;

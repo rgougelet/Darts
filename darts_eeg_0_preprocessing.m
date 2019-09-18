@@ -1,23 +1,24 @@
 clear; close all; clc;
-script_dir = '/home/rgougelet/Desktop/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
 cd(script_dir);
+warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
-addpath('./eeglab14_1_2b')
+addpath([script_dir,'/eeglab2019_0/'])
 eeglab;
 close all;
-data_dir = './data/';
+data_dir = [script_dir,'/data/'];
 addpath(data_dir)
 
-subjs_to_include = {'571','579', ...
-	'607', '608', '616', '619', '621', '627', '631', '580'};
-
-% user input
+subjs_to_include = {'571', '579', '580', ...
+	'607', '608', '616', '619', '621', '627', '631'};
 new_srate = 512;
 
-for subj_i = 1:length(subjs_to_include)
+% preprocess sets
+% parfor compatible
+parfor subj_i = 1:length(subjs_to_include)
 
 	% load dataset
-    subj_id = subjs_to_include{subj_i};
+  subj_id = subjs_to_include{subj_i};
 	subj_set = [subj_id,'_eeg.set'];
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
 	old_setname = EEG.setname;
@@ -34,7 +35,7 @@ for subj_i = 1:length(subjs_to_include)
 	end
 	
 	% apply cleanline
-% 	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
+	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
 	
 	% save set
 	EEG.setname = [old_setname,'_',num2str(new_srate)];
