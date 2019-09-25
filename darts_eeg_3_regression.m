@@ -19,7 +19,7 @@ freq_labs = {'theta', 'alpha', 'gamma'};
 interval_labs = {'delay', 'pre_throw'};
 
 % load XLSX SNAP data
-[num,txt,raw] = xlsread([script_dir,'behavioral_data.xlsx']);
+[num,txt,raw] = xlsread([script_dir,'behavioral_data_reduced.xlsx']);
 headers = txt(1,:);
 for k=1:numel(headers)
 	xlsx.(headers{k})=num(:,k) ;
@@ -34,8 +34,8 @@ for chan_lab = chan_labs
 		end
 	end
 end
-xlsx.throwtime = nan(length(xlsx.pres),1);
-xlsx.delaytime = nan(length(xlsx.pres),1);
+xlsx.eeg_throwtime = nan(length(xlsx.pres),1);
+xlsx.eeg_delaytime = nan(length(xlsx.pres),1);
 
 % for each subject
 for subj_i = 1:length(subjs_to_include)
@@ -121,8 +121,8 @@ for subj_i = 1:length(subjs_to_include)
 			% assign amplitudes to matching variable col and trial row
 			delay_amps = xlsx.(['delay_',chan_lab,'_',freq_lab]);
 			pre_throw_amps = xlsx.(['pre_throw_',chan_lab,'_',freq_lab]);
-			throwtime = xlsx.throwtime;
-			delaytime = xlsx.delaytime;
+			throwtime = xlsx.eeg_throwtime;
+			delaytime = xlsx.eeg_delaytime;
 			for trial_amp_i = 1:n_eeg_trials
 				delay_amps(eeg_to_snap_inds(trial_amp_i)) = delay_trial_amps(trial_amp_i);
 				pre_throw_amps(eeg_to_snap_inds(trial_amp_i)) = pre_throw_trial_amps(trial_amp_i);
@@ -131,8 +131,8 @@ for subj_i = 1:length(subjs_to_include)
 			end
 			xlsx.(['delay_',chan_lab,'_',freq_lab]) = delay_amps;
 			xlsx.(['pre_throw_',chan_lab,'_',freq_lab]) = pre_throw_amps;
-			xlsx.throwtime = throwtime;
-			xlsx.delaytime = delaytime;
+			xlsx.eeg_throwtime = throwtime;
+			xlsx.eeg_delaytime = delaytime;
 			
 		end
 	end
@@ -142,8 +142,8 @@ parsave('xlsx.mat',xlsx,'xlsx')
 %% make regression vars
 load('xlsx.mat');
 non_outlier_inds = ~isnan(xlsx.distance);
-orig_throwtime = xlsx.throwtime(non_outlier_inds);
-orig_delaytime = xlsx.delaytime(non_outlier_inds);
+orig_throwtime = xlsx.eeg_throwtime(non_outlier_inds);
+orig_delaytime = xlsx.eeg_delaytime(non_outlier_inds);
 orig_distance = xlsx.distance(non_outlier_inds);
 t_distance = orig_distance.^(1/2);
 pres = categorical(xlsx.pres(non_outlier_inds));
@@ -173,11 +173,21 @@ eval( ['reg_table = table(', strjoin(varnames',','),');'] );
 mdl_robust = fitlm(reg_table,'interactions','ResponseVar', 'distance', 'RobustOpts','on')
 results = sortrows(anova(mdl_robust),5,'descend');
 writetable(results,'full_model_results.xls','WriteRowNames',true)
-%%
-% figure 2
-hist(mdl_robust.Residuals.Raw);
 
-% plot residuals
+%%
+sum(mdl_robust.Coefficients.pValue<0.05)
+
+%% identify robust regression outliers
+sum(mdl_robust.Robust.Weights==0)
+sortrows(mdl_robust.Residuals.Raw(mdl_robust.Robust.Weights==0))
+
+% figure 2a
+figure;
+hist(mdl_robust.Residuals.Raw(mdl_robust.Robust.Weights~=0),100);
+xlim([-5,5]);
+
+% figure 2b
+figure;
 y_hat = predict(mdl_robust, reg_table);
 plot(reg_table.distance,y_hat,'bo'); axis([-5,5,-5,5]); hold on
 plot([-5, 5], [-5,5])
@@ -189,51 +199,60 @@ test_mads = zeros(nfolds,1);
 training_rmses = zeros(nfolds,1);
 test_rmses = zeros(nfolds,1);
 adj_rs = zeros(nfolds,1);
-training_resids = zeros(nfolds,1201);
-training_inds = zeros(nfolds,1201);
+training_resids = zeros(nfolds,1258);
+training_inds = zeros(nfolds,1258);
 
-test_resids = zeros(nfolds,133);
-test_inds = zeros(nfolds,133);
+test_resids = zeros(nfolds,139);
+test_inds = zeros(nfolds,139);
 
 for fold = 1:nfolds
 	fold
 	
-	reg_table.inds = (1:length(reg_table.dists))';
-	reg_table.rand = randperm(length(reg_table.dists))';
+	reg_table.inds = (1:length(reg_table.distance))';
+	reg_table.rand = randperm(length(reg_table.distance))';
 	reg_table = sortrows(reg_table, width(reg_table));
 	reg_table = removevars(reg_table,'rand');
-	test_inds(fold,:)= reg_table.inds(1:133);
-	training_inds(fold,:)= reg_table.inds(134:end);
+	test_inds(fold,:)= reg_table.inds(1:139);
+	training_inds(fold,:)= reg_table.inds(140:end);
 	reg_table = removevars(reg_table,'inds');
 	
-	test_data = reg_table(1:133,:);
-	training_data = reg_table(134:end,:);
-	training_mdl = fitlm(training_data,'interactions','ResponseVar', 'dists', 'RobustOpts','on');
+	test_data = reg_table(1:139,:);
+	training_data = reg_table(140:end,:);
+	training_mdl = fitlm(training_data,'interactions','ResponseVar', 'distance', 'RobustOpts','on');
 	training_resids(fold,:) = training_mdl.Residuals.Raw;
-	test_resids(fold,:) = test_data.dists-predict(training_mdl, test_data);
+	test_resids(fold,:) = test_data.distance-predict(training_mdl, test_data);
 	adj_rs(fold) = training_mdl.Rsquared.Adjusted;
 end
-training_mads = nanmedian(abs(training_resids),2);
-test_mads = nanmedian(abs(test_resids),2);
+training_mads = nanmedian(abs(training_resids(1:7000,:)),2);
+test_mads = nanmedian(abs(test_resids(1:7000,:)),2);
 mad_ratios = training_mads./test_mads;
 
+figure; % figure 2b
+hist(adj_rs(1:7000),100);
+mean(adj_rs(1:7000))
+median(adj_rs(1:7000))
+mean(adj_rs(adj_rs>.8))
+%%
 figure; % figure 3
-hist(adj_rs);
+subplot(3,1,1); hist(training_mads,40); xlim([0 1.5])
+subplot(3,1,2); hist(test_mads,40); xlim([0 1.5])
+subplot(3,1,3); hist(mad_ratios,40); xlim([0 1.5])
 
-figure; % figure 4
-subplot(3,1,1); hist(training_mads,30); xlim([0 1.5])
-subplot(3,1,2); hist(test_mads,30); xlim([0 1.5])
-subplot(3,1,3); hist(mad_ratios,30); xlim([0 1.5])
-
-% get human-relatable numbers for manuscript
+%% get human-relatable numbers for manuscript
 orig_mean = nanmean(orig_distance); % in original paper units
 orig_sd = nanstd(orig_distance);
-irl_mean = nanmean(orig_distance)*8.5 % actual distance from target to dart "in real life"
-irl_std = nanstd(orig_distance)*8.5
-z_errors = mdl_robust.Residuals.Raw; % in z units
-unz_errors = ((z_errors+orig_mean).*orig_sd).^2; % in original paper units
-irl_unz_errors = unz_errors*8.5
+orig_throwtime_mean = nanmean(orig_throwtime)
+orig_throwtime_median = nanmedian(orig_throwtime)
+sum(xlsx.pres(non_outlier_inds))
+sum(~xlsx.pres(non_outlier_inds))
+orig_throwtime_sd = nanstd(orig_throwtime)
+irl_mean = nanmean(orig_distance)*6.55 % actual distance from target to dart "in real life"
+irl_median = nanmedian(orig_distance)*6.55 % actual distance from target to dart "in real life"
+irl_std = nanstd(orig_distance)*6.55
 
-mad_z_error = nanmedian(abs(z_errors));
-mad_unz_error = nanmedian(abs(unz_errors));
-irl_mad_unz_error = mad_unz_error*8.5
+
+z_errors = mdl_robust.Residuals.Raw; % in z units
+t_unz_errors = (z_errors+nanmean(t_distance)).*nanstd(t_distance); % transformed paper units
+unz_errors = t_unz_errors.^2; % in paper units
+irl_unz_errors = unz_errors*6.55; % at projection screen scale
+irl_mad_unz_error = nanmedian(abs(irl_unz_errors))
