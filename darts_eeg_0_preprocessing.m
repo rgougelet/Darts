@@ -11,7 +11,7 @@ addpath(data_dir)
 
 subjs_to_include = {'571', '579', '580', ...
 	'607', '608', '616', '619', '621', '627', '631'};
-new_srate = 512;
+new_srate = 32;
 
 % preprocess sets
 % parfor compatible
@@ -29,17 +29,17 @@ parfor subj_i = 1:length(subjs_to_include)
 	% optimize head center
 	EEG = pop_chanedit(EEG, 'eval','chans = pop_chancenter( chans, [],[]);');
 	
-	% resample
-	if EEG.srate ~= new_srate % keep old srate if equivalent
-		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);
-	end
-	
 	% hp filter
 	EEG = pop_eegfiltnew(EEG, 1, 0, 1650, 0, [], 0);
 
 	% notch filter
 	EEG = pop_eegfiltnew(EEG, 59.5,60.5, [],true);
-
+	
+	% resample
+	if EEG.srate ~= new_srate % keep old srate if equivalent
+		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);
+	end
+	
 	% save set
 	EEG.setname = [old_setname,'_',num2str(new_srate)];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
