@@ -34,9 +34,12 @@ parfor subj_i = 1:length(subjs_to_include)
 		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);
 	end
 	
-	% apply cleanline
-	EEG = pop_cleanline(EEG, 'bandwidth',2,'chanlist',1:EEG.nbchan ,'computepower',0,'linefreqs', 60:60:(EEG.srate/2) ,'normSpectrum',0,'p',0.01,'pad',2,'plotfigures',0,'scanforlines',1,'sigtype','Channels','tau',100,'verb',1,'winsize',4,'winstep',4);
-	
+	% hp filter
+	EEG = pop_eegfiltnew(EEG, 1, 0, 1650, 0, [], 0);
+
+	% notch filter
+	EEG = pop_eegfiltnew(EEG, 59.5,60.5, [],true);
+
 	% save set
 	EEG.setname = [old_setname,'_',num2str(new_srate)];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);

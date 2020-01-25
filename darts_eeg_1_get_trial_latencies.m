@@ -85,7 +85,7 @@ parfor subj_i = 1:length(subjs_to_include)
 		cue_event_latencys(end+1) = round(EEG.event(cue_event_ind).latency);
 	end
 	
-	% verify
+	% check strings from events match for each trial
 	if ~strcmp(end_event_strings(:,1:5),start_event_strings(:,1:5))
 		error('Type strings dont match')
 	end
