@@ -5,3 +5,5 @@
 *.m~
 trash/
 data/
+
+eeglab
