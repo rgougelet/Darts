@@ -19,8 +19,8 @@ parfor subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
-	subj_set = [subj_id,'_eeg_',num2str(srate),'.set'];
-	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
+	subj_set = dir([data_dir,subj_id,'*',num2str(srate),'.set']);
+	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	
 	% init
 	start_event_inds = [];
