@@ -1,9 +1,11 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = 'G:/darts/';
+
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
-addpath([script_dir,'/eeglab2019_0/'])
+addpath([script_dir,'/eeglab/'])
 eeglab;
 close all;
 data_dir = [script_dir,'/data/'];
