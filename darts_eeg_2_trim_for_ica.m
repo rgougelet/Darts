@@ -1,7 +1,6 @@
 close all; clc; clear;
 % script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
 script_dir = 'G:/darts/';
-
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')

@@ -1,6 +1,6 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = 'G:/darts/';
 cd(script_dir);
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
@@ -10,7 +10,7 @@ eeglab nogui;
 
 subjs_to_include = {
 	'571'
-	% 	'579'
+	'579'
 	'580'
 	'607'
 	'608'
