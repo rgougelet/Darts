@@ -1,6 +1,6 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = 'G:/darts/';
 cd(script_dir);
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
@@ -9,16 +9,16 @@ addpath('/data/common/matlab/eeglab')
 eeglab nogui;
 
 subjs_to_include = {
-% 	'571'
-		'579'
-% 	'580'
-% 	'607'
-% 	'608'
-% 	'616'
-% 	'619'
-% 	'621'
-% 	'627'
-% 	'631'
+	'571'
+	'579'
+	'580'
+	'607'
+	'608'
+	'616'
+	'619'
+	'621'
+	'627'
+	'631'
 	};
 srate = 512;
 %%
