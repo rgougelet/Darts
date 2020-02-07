@@ -3,6 +3,5 @@
 *.asv
 *.mat
 *.m~
-trash/
 data/
 
