@@ -1,9 +1,10 @@
 clear; close all; clc;
-% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-script_dir = 'G:/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = 'G:/darts/';
 cd(script_dir);
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
+addpath([script_dir,'/deps/'])
 rmpath([script_dir,'/eeglab/'])
 addpath('/data/common/matlab/eeglab')
 eeglab nogui;
@@ -21,18 +22,22 @@ subjs_to_include = {
 	'631'
 	};
 srate = 512;
+
 %%
 % binica is parfor compatible
 parfor subj_i = 1:length(subjs_to_include)
-	
+	cd(script_dir);
+
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir,subj_id,'*_trim.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
 	
+	in = load([data_dir,EEG.setname,'.mat']);
+	rej_ep_inds = in.rej_ep_inds;
+	
 	% reject epochs
-	rej_ep_inds = find(EEG.reject.rejmanual);
 	EEG.etc.pipeline{end+1} =  ['Epochs removed: ', num2str(rej_ep_inds)];
 	EEG = pop_rejepoch( EEG, rej_ep_inds ,0);
 	
@@ -45,6 +50,10 @@ parfor subj_i = 1:length(subjs_to_include)
 		rej_chans = {'B32'};
 	elseif strcmp(subj_id, '631')
 		rej_chans = {'D28'};
+	elseif strcmp(subj_id, '616')
+		rej_chans = {'C2'};
+	elseif strcmp(subj_id, '627')
+		rej_chans = {'A28'};
 	else
 		rej_chans = {};
 	end
@@ -81,7 +90,10 @@ parfor subj_i = 1:length(subjs_to_include)
 	
 	% binica
 	cd(data_dir);
-	EEG = pop_runica(EEG, 'icatype','binica','extended',1,'interupt', 'off', 'filenum', str2num(subj_id));
+	out_dir = [data_dir,'binica_',subj_id];
+	mkdir(out_dir)
+	cd(out_dir)
+	EEG = pop_runica(EEG, 'icatype','binica','extended',1,'interupt', 'off', 'filenum', int32(str2double(subj_id)));
 	cd(script_dir);
 	EEG.setname = [old_setname,'_ic'];
 	EEG.etc.pipeline{end+1} =  'BinICA run.';

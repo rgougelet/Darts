@@ -1,6 +1,6 @@
 close all; clc; clear;
-% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-script_dir = 'G:/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = 'G:/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
@@ -22,8 +22,10 @@ subjs_to_include = {
 		'631'
 	};
 srate = 512;
+overwrite_rej = false;
+
 %%
-for subj_i = 1:length(subjs_to_include)
+parfor subj_i = 1:length(subjs_to_include)
 
 	% load dataset
   subj_id = subjs_to_include{subj_i};
@@ -63,7 +65,14 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_editeventvals(EEG,'delete',rej);
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'Separated into 250 ms chunks for easier cleaning';
-
+	
+	% reject chunks
+	if overwrite_rej
+		EEG = rm_sds(EEG,figure(2));
+		rej_ep_inds = find(EEG.reject.rejmanual);
+		parsave([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
+	end
+	
 	% save
 	EEG.setname = [old_setname,'_trim'];
 	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];

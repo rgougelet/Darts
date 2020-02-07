@@ -4,9 +4,9 @@ script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
-addpath([script_dir,'/eeglab/'])
+addpath([script_dir,'eeglab/'])
 eeglab nogui;
-data_dir = [script_dir,'/data/'];
+data_dir = [script_dir,'data/'];
 addpath(data_dir)
 
 subjs_to_include = {
@@ -29,7 +29,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
-	subj_set = dir([subj_id,'_eeg.set']);
+	subj_set = dir([data_dir,subj_id,'_eeg.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
 	EEG.etc.pipeline =  {};
