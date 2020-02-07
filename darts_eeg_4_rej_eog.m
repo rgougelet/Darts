@@ -39,49 +39,69 @@ for subj_i = 1:length(subjs_to_include)
 	veog = EEG.data(uveog_i,:)-EEG.data(lveog_i,:);
 	heog = EEG.data(lheog_i,:)-EEG.data(rheog_i,:);
 
-	% identify rej components
-	veog_rej_inds = abs(corr(veog',EEG.icaact(:,:)'))>0.08;
-	heog_rej_inds = abs(corr(heog',EEG.icaact(:,:)'))>0.08;
-	eog_rej_inds = find(heog_rej_inds | veog_rej_inds);
+	% EEG.icaweights*EEG.data = EEG.icaact
+	% EEG.data = EEG.icawinv*EEG.icaact
+	
+	X2 = [veog;heog];
+	X4 = [EEG.data(uveog_i,:); EEG.data(lveog_i,:);EEG.data(lheog_i,:);EEG.data(rheog_i,:)];
 
-	% rej eog ics
-	EEG = pop_subcomp( EEG, eog_rej_inds, 0);
-	EEG.etc.pipeline{end+1} =  ['ICs rejected: ', num2str(eog_rej_inds)];
-	EEG = eeg_checkset(EEG, 'ica');
+% 	% uses bipolar eog channels and channels
+% 	Y = EEG.data(1:end-4,:);
+% 	X = X2;
+% 	B = Y*pinv(X);
+% 	new_Y = Y-B*X;
+% 	eegplot([Y;X4],'data2',[new_Y;X4] , 'dispchans', 32, 'winlength',10);
 
-	new = EEG;
-	new.data = new.data(:,:)./std(new.data(:,:),0,2);
-	old = old_EEG;
-	old.data = old.data(:,:)./std(old.data(:,:),0,2);
-	vis_artifacts_rjg(new,old,'equalize_channel_scaling',true);
+% 	% uses unipolar eog channels and channels
+% 	Y = EEG.data(1:end-4,:);
+% 	X = X4;
+% 	B = Y*pinv(X);
+% 	new_Y = Y-B*X;
+% 	eegplot([Y;X4],'data2',[new_Y;X4] , 'dispchans', 32, 'winlength',10);
 
-	continue
-	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
-% 		eegplot(diff(EEG.icaact(:,:),2));
-	plot(f,icx); xlim([0 50])
-continue
-	theta_i = f>=3 & f< 8;
-	alpha_i = f>=8 & f< 12;
-	beta_i = f>=12 & f< 30;
-	logamma_i = f>=30 & f< 80;
-	higamma_i = f>=80 & f< 256;
+% 	% uses bipolar eog channels and ICs
+% 	Y = EEG.icaact(:,:);
+% 	X = X2;
+% 	B = Y*pinv(X);
+% 	new_Y = Y-B*X;
+% 	eegplot(EEG.data(:,:),'data2',EEG.icawinv*(new_Y), 'dispchans', 32, 'winlength',10);
 
-	alpha_ratios = mean(icx(theta_i,:),1)./mean(icx(~theta_i,:),1);%thetza
-	[~, sortalph ] = sort(alpha_ratios,'descend');
-	figure; plot(f,icx(:,sortalph(1:5))); xlim([0 50])
-	continue
-	eegplot(EEG.icaact(sortalph,:));
-	% remove eog
+	% uses all unipolar eog channels and ICs, seems best
+	Y = EEG.icaact(:,:);
+	X = X4;
+	B = Y*pinv(X);
+	new_Y = Y-B*X;
+	EEG.icaact = EEG.icaact-reshape(B*X,size(EEG.icaact));
+% 	eegplot(EEG.data(:,:),'data2',EEG.icawinv*(new_Y), 'dispchans', 32, 'winlength',10);
+
+	EEG.etc.pipeline{end+1} = 'ICs reweighted';
+	EEG.etc.pipeline{end+1} = B;
+
+% 	% isolate oscillatory ICs (failed)
+% 	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
+% 	eegplot(diff(EEG.icaact(:,:),2));
+% 	plot(f,icx); xlim([0 50])
+% 	theta_i = f>=3 & f< 8;
+% 	alpha_i = f>=8 & f< 12;
+% 	beta_i = f>=12 & f< 30;
+% 	logamma_i = f>=30 & f< 80;
+% 	higamma_i = f>=80 & f< 256;
+% 	alpha_ratios = mean(icx(theta_i,:),1)./mean(icx(~theta_i,:),1);%thetza
+% 	[~, sortalph ] = sort(alpha_ratios,'descend');
+% 	figure; plot(f,icx(:,sortalph(1:5))); xlim([0 50])	
+% 	eegplot(EEG.icaact(sortalph,:));
+
+	% remove eog channels
 	EEG = pop_select( EEG,'nochannel', {'UVEOG', 'LVEOG', 'LHEOG', 'RHEOG'});
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'EOG channels removed';
 
 	% align head model, warp to fiducials and Cz(45)->C21(85), Iz(88)->D23(119)
 	EEG = headfit(EEG,subj_id);
-
-	ic_EEG = EEG;
+	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
 
 	% load pre-ica data
+	ic_EEG = EEG;
 	subj_set = dir([data_dir,subj_id,'_eeg_512.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
@@ -112,14 +132,24 @@ continue
 	EEG = eeg_checkset(EEG, 'ica');
 	EEG.etc.pipeline{end+1} =  ['ICs copied from: ', ic_EEG.setname];
 
+	% rej eog ics
+	EEG = pop_subcomp( EEG, eog_rej_inds, 0);
+	EEG.etc.pipeline{end+1} =  ['ICs rejected: ', num2str(eog_rej_inds)];
+	EEG = eeg_checkset(EEG, 'ica');
 
 	% linked mastoid reference
 	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','off');
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref, M1 and M2 removed';
 
+	% remove eog channels
+	EEG = pop_select( EEG,'nochannel', {'UVEOG', 'LVEOG', 'LHEOG', 'RHEOG'});
+	EEG = eeg_checkset(EEG);
+	EEG.etc.pipeline{end+1} =  'EOG channels removed';
+
 	% align head model, warp to fiducials and Cz(45)->C21(85), Iz(88)->D23(119)
 	EEG = headfit(EEG,subj_id);
+	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
 
 	EEG.setname = [old_setname,'_rej'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
