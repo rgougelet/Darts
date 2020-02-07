@@ -29,7 +29,8 @@ for subj_i = 1:length(subjs_to_include)
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir,subj_id,'*_ic.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
-	
+	old_EEG = EEG;
+
 	% get eog inds
 	uveog_i= find(strcmp({EEG.chanlocs.labels},'UVEOG'));
 	lveog_i = find(strcmp({EEG.chanlocs.labels},'LVEOG'));
@@ -48,20 +49,28 @@ for subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  ['ICs rejected: ', num2str(eog_rej_inds)];
 	EEG = eeg_checkset(EEG, 'ica');
 
-	[icx,f] = pwelch(EEG.icaact(:,:)',EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
-	plot(f,icx)
+	new = EEG;
+	new.data = new.data(:,:)./std(new.data(:,:),0,2);
+	old = old_EEG;
+	old.data = old.data(:,:)./std(old.data(:,:),0,2);
+	vis_artifacts_rjg(new,old,'equalize_channel_scaling',true);
+
 	continue
+	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
+% 		eegplot(diff(EEG.icaact(:,:),2));
+	plot(f,icx); xlim([0 50])
+continue
+	theta_i = f>=3 & f< 8;
+	alpha_i = f>=8 & f< 12;
+	beta_i = f>=12 & f< 30;
+	logamma_i = f>=30 & f< 80;
+	higamma_i = f>=80 & f< 256;
 
-	[~, ltheta_i] = min(abs(3-f));
-	[~, rtheta_i] = min(abs(8-f));
-	theta_i = [ltheta_i, rtheta_i];
-	[~, ralpha_i] = min(abs(12-f));
-	alpha_i = [rtheta_i+1, ralpha_i];
-	[~, llogamma_i] = min(abs(30-f));
-	[~, rlogamma_i] = min(abs(8-f));
-	theta_i = [ltheta_i, rtheta_i];
-
-
+	alpha_ratios = mean(icx(theta_i,:),1)./mean(icx(~theta_i,:),1);%thetza
+	[~, sortalph ] = sort(alpha_ratios,'descend');
+	figure; plot(f,icx(:,sortalph(1:5))); xlim([0 50])
+	continue
+	eegplot(EEG.icaact(sortalph,:));
 	% remove eog
 	EEG = pop_select( EEG,'nochannel', {'UVEOG', 'LVEOG', 'LHEOG', 'RHEOG'});
 	EEG = eeg_checkset(EEG);
