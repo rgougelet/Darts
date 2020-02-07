@@ -90,6 +90,11 @@ for subj_i = 1:length(subjs_to_include)
 % 	[~, sortalph ] = sort(alpha_ratios,'descend');
 % 	figure; plot(f,icx(:,sortalph(1:5))); xlim([0 50])	
 % 	eegplot(EEG.icaact(sortalph,:));
+ 
+  % linked mastoid rereference
+	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','off');
+	EEG = eeg_checkset(EEG);
+	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref, M1 and M2 removed';
 
 	% remove eog channels
 	EEG = pop_select( EEG,'nochannel', {'UVEOG', 'LVEOG', 'LHEOG', 'RHEOG'});
@@ -100,7 +105,7 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = headfit(EEG,subj_id);
 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
 
-	% load pre-ica data
+	%% load pre-ica data
 	ic_EEG = EEG;
 	subj_set = dir([data_dir,subj_id,'_eeg_512.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
