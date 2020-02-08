@@ -9,10 +9,10 @@ addpath([script_dir,'eeglab/'])
 eeglab;
 
 subjs_to_include = {
-% 	'571'
-% 	'579'
-% 	'580'
-% 	'607'
+	'571'
+	'579'
+	'580'
+	'607'
 	'608'
 	'616'
 	'619'
@@ -29,6 +29,7 @@ for subj_i = 1:length(subjs_to_include)
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir,subj_id,'*_ic.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
+	old_setname = EEG.setname;
 	old_EEG = EEG;
 
 	% get eog inds
@@ -104,8 +105,25 @@ for subj_i = 1:length(subjs_to_include)
 	% align head model, warp to fiducials and Cz(45)->C21(85), Iz(88)->D23(119)
 	eeglab redraw
 	EEG = headfit(EEG,subj_id);
-	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
-	
+	in_cell = {'mesh',...
+		'G:\darts\eeglab\plugins\dipfit3.3\standard_BEM\standard_vol.mat',...
+		'transform',...
+		[],...
+		'chaninfo1',...
+		EEG.chaninfo,...
+		'helpmsg',...
+		'on',...
+		'transform',...
+		EEG.dipfit.coord_transform;
+		};
+	ref_locs = 'G:\darts\eeglab\plugins\dipfit3.3\standard_BEM\elec\standard_1020.elc';
+
+	[~, EEG.dipfit.coord_transform] = coregister(EEG.chanlocs,ref_locs,in_cell{:});
+	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m then manually';
+	EEG.etc.pipeline{end+1} = EEG.dipfit.coord_transform;
+
+	EEG.setname = [old_setname,'_ch'];
+	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 	continue
 	%% load pre-ica data
 	ic_EEG = EEG;
