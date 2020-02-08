@@ -51,18 +51,21 @@ for subj_i = 1%:length(subjs_to_include)
 		elec2.pnt = elec2.elecpos;
 	end
 	
-	elec1.pnt = single(elec1.pnt(1:128,:));
-	elec2.pnt = single(elec2.pnt(4:end-4,:));
+	refs = {'F3', 'F1','Fz','F2','F4','C3', 'C1','Cz','C2','C4',...
+		'P3', 'P1','Pz','P2','P4'};
+	[~,~,ref_i] = intersect(refs, elec2.label);
+	elec1.pnt = (elec1.pnt(1:3:128,:));
+	elec2.pnt = (elec2.pnt(ref_i,:));
 	pnt2 = (elec2.pnt);
-	
+	init_t = EEG.dipfit.coord_transform;
+%%
 	t1s = -4:1:4;
 	t2s = -30:1:0;
-	t3s = 10:-1:-20;
-	t4s = 1:0.05:1.3;
-	t5s = 1:0.05:1.3;
-	t6s = 1:0.05:1.4;
+	t3s = 10:1:30;
+	t4s = 1:0.05:1.5;
+	t5s = 1:0.05:1.5;
+	t6s = 1:0.05:1.5;
 	numts = length(t1s)*length(t2s)*length(t3s)*length(t4s)*length(t5s)*length(t6s);
-	init_t = EEG.dipfit.coord_transform;
 
 	ts = nan(numts,9);
 	t_i = 0;
@@ -82,7 +85,7 @@ for subj_i = 1%:length(subjs_to_include)
 	end
 
 	ds = nan(10,numts);
-	parfor d_i = 1:numts
+	for d_i = 1:numts
 		t = ts(d_i,:);
 		transfmat = traditionaldipfit(t);
 		pnt1 = transfmat*[ elec1.pnt ones(size(elec1.pnt,1),1) ]';
@@ -90,11 +93,13 @@ for subj_i = 1%:length(subjs_to_include)
 
 		r1 = repmat(pnt1,length(pnt2),1);
 		r2 = repelem(pnt2,length(pnt1),1);
-		d = sum(sum((r1-r2).^2));
+		r = sum((r1-r2).^2,2);
+
+		d = skewness(r);
 
 		ds(:,d_i) = [t, d];
 	end
-
+%%
 	[~,i] = min(ds(10,:));
 	min_t = ds(1:9,i)';
 	
@@ -109,9 +114,33 @@ for subj_i = 1%:length(subjs_to_include)
 		'transform',...
 		min_t
 		};
-	[elec1, ~] = coregister(EEG.chanlocs,ref_locs,in_cell{:});
+	[~, ~] = coregister(EEG.chanlocs,ref_locs,in_cell{:});
 	
 end
+%%
+transfmat = traditionaldipfit(init_t);
+pnt1 = transfmat*[ elec1.pnt ones(size(elec1.pnt,1),1) ]';
+pnt1 = (pnt1(1:3,:))';
+
+r1 = repmat(pnt1,length(pnt2),1);
+r2 = repelem(pnt2,length(pnt1),1);
+r = sum((r1-r2).^2,2);
+d = median(median(r));
+
+%%
+in_cell = {'mesh',...
+		'G:\darts\eeglab\plugins\dipfit3.3\standard_BEM\standard_vol.mat',...
+		'transform',...
+		[],...
+		'chaninfo1',...
+		EEG.chaninfo,...
+		'helpmsg',...
+		'on',...
+		'transform',...
+		init_t
+		};
+	[elec1, ~] = coregister(EEG.chanlocs,ref_locs,in_cell{:});
+	
 % new_EEG = pop_dipfit_settings( EEG,...
 %  'hdmfile','G:\\darts\\eeglab\\plugins\\dipfit3.3\\standard_BEM\\standard_vol.mat',...
 % 'coordformat','MNI',...
