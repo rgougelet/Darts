@@ -9,10 +9,10 @@ addpath([script_dir,'eeglab/'])
 eeglab;
 
 subjs_to_include = {
-	'571'
-	'579'
-	'580'
-	'607'
+% 	'571'
+% 	'579'
+% 	'580'
+% 	'607'
 	'608'
 	'616'
 	'619'
@@ -102,9 +102,11 @@ for subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'EOG channels removed';
 
 	% align head model, warp to fiducials and Cz(45)->C21(85), Iz(88)->D23(119)
+	eeglab redraw
 	EEG = headfit(EEG,subj_id);
 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
-
+	
+	continue
 	%% load pre-ica data
 	ic_EEG = EEG;
 	subj_set = dir([data_dir,subj_id,'_eeg_512.set']);
