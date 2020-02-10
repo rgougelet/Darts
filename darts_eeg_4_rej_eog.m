@@ -1,6 +1,6 @@
 clear; close all; clc;
-% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-script_dir = 'G:/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = 'G:/darts/';
 cd(script_dir);
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
@@ -9,10 +9,10 @@ addpath([script_dir,'eeglab/'])
 eeglab;
 
 subjs_to_include = {
-% 	'571'
-% 	'579'
-% 	'580'
-% 	'607'
+	'571'
+	'579'
+	'580'
+	'607'
 	'608'
 	'616'
 	'619'
@@ -105,6 +105,8 @@ for subj_i = 1:length(subjs_to_include)
 	eeglab redraw
 	EEG = headfit(EEG,subj_id);
 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
+	
+	% dipfit
 	
 	continue
 	%% load pre-ica data
