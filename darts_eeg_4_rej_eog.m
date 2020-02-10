@@ -29,6 +29,7 @@ for subj_i = 1:length(subjs_to_include)
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir,subj_id,'*_ic.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
+	old_setname = EEG.setname;
 	old_EEG = EEG;
 
 	% get eog inds
@@ -107,7 +108,7 @@ for subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
 	
 	% dipfit
-	
+
 	continue
 	%% load pre-ica data
 	ic_EEG = EEG;
