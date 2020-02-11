@@ -67,7 +67,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','on');
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref';
 	
-		% highpass filter the data
+	% highpass filter the data
 	[b,a] = butter(5,1/(EEG.srate/2),'high');
 	EEG.data = single(filtfilt(b,a,double(EEG.data')))';
 	EEG.etc.pipeline{end+1,:} = ...
