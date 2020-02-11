@@ -67,11 +67,27 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','on');
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref';
 	
-	% hp filter
-	EEG = pop_eegfiltnew(EEG, 1, 0, 1650, 0, [], 0);
-	EEG.etc.pipeline{end+1} =  ...
-		['eegfiltnew  HP, 1Hz, ',num2str(1650)];
-	
+		% highpass filter the data
+	[b,a] = butter(5,1/(EEG.srate/2),'high');
+	EEG.data = single(filtfilt(b,a,double(EEG.data')))';
+	EEG.etc.pipeline{end+1,:} = ...
+		['Butterworth HP, b:',num2str(b),' a:',num2str(a)];
+
+	% notch filter the data
+	for harm = 60:60:(EEG.srate/2)
+		nyq = EEG.srate/2;
+		w = pi*(.5/nyq); % hz width
+		s = 2; % half-amplitude cutoff
+		az = w/2; 
+		d = sqrt(s^2-1)*az;
+		r = 1-d;
+		t = harm*pi/nyq;
+		b = [1 -2*cos(t) 1];
+		a = [1 -2*r*cos(t) r^2];
+		EEG.data = single(filtfilt(b,a,double(EEG.data(:,:)')))';
+		EEG.etc.pipeline{end+1,:} = ...
+			['IIR notch, b:',num2str(b),' a:',num2str(a)];
+	end
 	
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
