@@ -72,25 +72,6 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  ...
 		['eegfiltnew  HP, 1Hz, ',num2str(1650)];
 	
-	% notch filter
-	EEG = pop_eegfiltnew(EEG, 59.5,60.5, [],true);
-	EEG.etc.pipeline{end+1} =  ...
-		['eegfiltnew  notch, 59.5 to 60.5 Hz'];
-	
-	% notch filter
-	EEG = pop_eegfiltnew(EEG, 119.5,120.5, [],true);
-	EEG.etc.pipeline{end+1} =  ...
-		['eegfiltnew  notch, 119.5 to 120.5 Hz'];
-	
-	% notch filter
-	EEG = pop_eegfiltnew(EEG, 179.5,180.5, [],true);
-	EEG.etc.pipeline{end+1} =  ...
-		['eegfiltnew  notch, 179.5 to 180.5 Hz'];
-	
-	% notch filter
-	EEG = pop_eegfiltnew(EEG, 239.5,240.5, [],true);
-	EEG.etc.pipeline{end+1} =  ...
-		['eegfiltnew  notch, 239.5 to 240.5 Hz'];
 	
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
