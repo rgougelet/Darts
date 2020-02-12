@@ -30,7 +30,7 @@ for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
-	subj_set = dir([data_dir, subj_id,'*_dip.set']);
+	subj_set = dir([data_dir, subj_id,'*_ic.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_EEG = EEG;
 
