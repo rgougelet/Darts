@@ -30,24 +30,24 @@ for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
-	subj_set = dir([data_dir, subj_id,'*_trim.set']);
+	subj_set = dir([data_dir, subj_id,'*_dip.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_EEG = EEG;
+
 	% apply laplacian 
-	X = [EEG.chanlocs.X];
-	Y = [EEG.chanlocs.Y];
-	Z = [EEG.chanlocs.Z];
-	EEG.data = laplacian_perrinX(EEG.data,X,Y,Z);
-% 	eegplot(EEG.data,'srate',EEG.srate,'data2',old_EEG.data./std(old_EEG.data(:,:),0,2))
+% 	X = [EEG.chanlocs.X];
+% 	Y = [EEG.chanlocs.Y];
+% 	Z = [EEG.chanlocs.Z];
+% 	EEG.data = laplacian_perrinX(EEG.data,X,Y,Z);
+
 	% reduce to 4 channels
 	% 	chans2keep = {'C11','C26','D7','D17'}; % Fz, Cz, Pz, Oz
 	% 	EEG = pop_select(EEG,'channel',chans2keep);
-	new = EEG;
-	new.data = new.data(:,:)./std(new.data(:,:),0,2);
-	old = old_EEG;
-	old.data = old.data(:,:)./std(old.data(:,:),0,2);
-	vis_artifacts_rjg(new,old,'equalize_channel_scaling',true);
+	EEG = pop_iclabel(EEG, 'default');
+	lab = EEG.etc.ic_classification.ICLabel;
+	[sort_c, sort_i] = sort(lab.classifications(:,1),'ascend');
+	eegplot(EEG.icaact(sort_i,:)./std(EEG.icaact(sort_i,:),[],2), 'dispchans',32, 'limits', [0 5])
 	% save set
-	EEG.setname = [EEG.setname,'_laplace'];
-	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
+% 	EEG.setname = [EEG.setname,'_lap'];
+% 	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end

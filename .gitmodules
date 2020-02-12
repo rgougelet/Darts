@@ -1,3 +1,0 @@
-[submodule "eeglab"]
-	path = eeglab
-	url = https://github.com/rgougelet/eeglab.git
