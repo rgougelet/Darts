@@ -1,6 +1,6 @@
 close all; clc; clear;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = 'G:/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
@@ -9,7 +9,7 @@ addpath([script_dir,'deps/'])
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
 eeglab nogui;
-
+%%
 subjs_to_include = {
 		'571'
 		'579'

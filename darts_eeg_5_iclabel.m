@@ -1,6 +1,6 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = 'G:/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
@@ -24,8 +24,6 @@ subjs_to_include = {
 	};
 srate = 512;
 
-% apply laplacian spatial filter
-% parfor compatible
 for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
@@ -46,7 +44,10 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_iclabel(EEG, 'default');
 	lab = EEG.etc.ic_classification.ICLabel;
 	[sort_c, sort_i] = sort(lab.classifications(:,1),'ascend');
-	eegplot(EEG.icaact(sort_i,:)./std(EEG.icaact(sort_i,:),[],2), 'dispchans',32, 'limits', [0 5])
+% 	eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'normed',1)
+	eegplot(EEG.icaact(:,:), 'dispchans',32, 'limits', [0 5], 'normed',1)
+
+% 	eegplot(EEG.icaact(sort_i,:)./std(EEG.icaact(sort_i,:),[],2), 'dispchans',32, 'limits', [0 5], 'normed',1)
 	% save set
 % 	EEG.setname = [EEG.setname,'_lap'];
 % 	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
