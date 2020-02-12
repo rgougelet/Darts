@@ -5,6 +5,7 @@ cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
 addpath([script_dir,'eeglab/'])
+addpath([script_dir,'deps/'])
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
 eeglab nogui;
@@ -34,14 +35,14 @@ parfor subj_i = 1:length(subjs_to_include)
 	old_setname = EEG.setname;
 	
 	% load event latencies
-	load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencies'])
+	in = load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencies']);
 	old_EEG = EEG;
 	
-	% cut out epochs
+	% remove non-trial data
 	new_EEG = old_EEG;
 	new_EEG.data = [];
-	for event_i = 1:length(start_event_latencies)
-		epoch = old_EEG.data(:,start_event_latencies(event_i):end_event_latencies(event_i)-384);
+	for event_i = 1:length(in.start_event_latencies)
+		epoch = old_EEG.data(:,in.start_event_latencies(event_i):in.end_event_latencies(event_i)-384);
 		new_EEG.data = [new_EEG.data,epoch-mean(epoch,2)];
 	end
 	EEG = new_EEG;
@@ -66,11 +67,16 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'Separated into 250 ms chunks for easier cleaning';
 	
-	% reject chunks
+	% redo manual noise removal
 	if overwrite_rej
 		EEG = rm_sds(EEG,figure(2));
 		rej_ep_inds = find(EEG.reject.rejmanual);
-		parsave([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
+		save([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
+	else
+		in = load([data_dir,old_setname,'_trim.mat'],'rej_ep_inds');
+		EEG.reject.rejmanual = false(1,EEG.trials);
+		EEG.reject.rejmanual(in.rej_ep_inds) = true;
+		EEG = eeg_checkset(EEG);
 	end
 	
 	% save
@@ -79,3 +85,20 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -34,8 +34,9 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
 	
-	in = load([data_dir,EEG.setname,'.mat']);
-	rej_ep_inds = in.rej_ep_inds;
+	% saves epochs rejected
+	rej_ep_inds = find(EEG.reject.rejmanual);
+	save([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
 	
 	% reject epochs
 	EEG.etc.pipeline{end+1} =  ['Epochs removed: ', num2str(rej_ep_inds)];

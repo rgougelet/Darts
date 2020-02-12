@@ -4,5 +4,4 @@
 *.mat
 *.m~
 data/
-
-eeglab
+eeglab/

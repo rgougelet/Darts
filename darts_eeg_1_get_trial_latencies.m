@@ -1,23 +1,32 @@
 clear; close all; clc;
-% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-script_dir = 'G:/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = 'G:/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'/eeglab/'])
-
+addpath([script_dir,'/deps/'])
 data_dir = [script_dir,'/data/'];
 addpath(data_dir)
 eeglab nogui;
-close all;
 
-subjs_to_include = {'571', '579', '580', ...
-	'607', '608', '616', '619', '621', '627', '631'};
+subjs_to_include = {
+	'571'
+	'579'
+	'580'
+	'607'
+	'608'
+	'616'
+	'619'
+	'621'
+	'627'
+	'631'
+	};
 srate = 512;
 
 % find trial start and end times
 % parfor compatible
-for subj_i = 1:length(subjs_to_include)
+parfor subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};

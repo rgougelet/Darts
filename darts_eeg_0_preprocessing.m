@@ -58,7 +58,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG=pop_chanedit(EEG, 'changefield',{rheog_i,'labels','RHEOG'});
 	EEG.etc.pipeline{end+1} =  'Externals relabeled';
 	EEG.etc.pipeline = EEG.etc.pipeline'; % make cell array easier to display
-	
+
 	% optimize head center
 	EEG = pop_chanedit(EEG, 'eval','chans = pop_chancenter( chans, [],[]);');
 	EEG.etc.pipeline{end+1} =  'Head center optimized';
@@ -70,7 +70,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	% highpass filter the data
 	[b,a] = butter(5,1/(EEG.srate/2),'high');
 	EEG.data = single(filtfilt(b,a,double(EEG.data')))';
-	EEG.etc.pipeline{end+1,:} = ...
+	EEG.etc.pipeline{end+1} = ...
 		['Butterworth HP, b:',num2str(b),' a:',num2str(a)];
 
 	% notch filter the data
@@ -85,7 +85,7 @@ parfor subj_i = 1:length(subjs_to_include)
 		b = [1 -2*cos(t) 1];
 		a = [1 -2*r*cos(t) r^2];
 		EEG.data = single(filtfilt(b,a,double(EEG.data(:,:)')))';
-		EEG.etc.pipeline{end+1,:} = ...
+		EEG.etc.pipeline{end+1} = ...
 			['IIR notch, b:',num2str(b),' a:',num2str(a)];
 	end
 	

@@ -59,8 +59,10 @@ for subj_i = 1:length(subjs_to_include)
 	mc3 = num2cell(tmc,1);
 	figure;
 	plot3(mc3{:},'*'); hold on;
+	text(mc3{1}+.1,mc3{2}+.1,mc3{3}+.1,{mEEG.chanlocs.labels},'FontSize',7, 'Color', 'b')
 	plot3(r3{:},'*'); hold on;
-	xlim([-100,100]); ylim([-150, 150]); zlim([-30,110]);
+	text(r3{1}+.1,r3{2}+.1,r3{3}+.1,{r.labels},'FontSize',7, 'Color', 'r')
+	xlim([-125,125]); ylim([-150, 100]); zlim([-75,175]);
 
 	%%
 	EEG =	pop_chanedit(EEG, 'nosedir','-Y');
@@ -70,8 +72,10 @@ for subj_i = 1:length(subjs_to_include)
 	c3 = num2cell(ch2three(EEG.chanlocs),1);
 	figure;	
 	plot3(c3{:},'*'); hold on;
+	text(c3{1}+.1,c3{2}+.1,c3{3}+.1,{mEEG.chanlocs.labels},'FontSize',7, 'Color', 'b')
 	plot3(r3{:},'*'); hold on;
-	xlim([-100,100]); ylim([-150, 150]); zlim([-30,110]);
+	text(r3{1}+.1,r3{2}+.1,r3{3}+.1,{r.labels},'FontSize',7, 'Color', 'r')
+	xlim([-125,125]); ylim([-150, 100]); zlim([-75,175]);
 	
 	%% plot transformed locations using pcreg
 	cl = pointCloud(ch2three(EEG.chanlocs));
@@ -81,20 +85,26 @@ for subj_i = 1:length(subjs_to_include)
 	tc3 = num2cell(tcl.Location,1);
 	figure;
 	plot3(tc3{:},'*'); hold on;
+	text(tc3{1}+.1,tc3{2}+.1,tc3{3}+.1,{mEEG.chanlocs.labels},'FontSize',7, 'Color', 'b')
 	plot3(r3{:},'*'); hold on;
-	xlim([-100,100]); ylim([-150, 150]); zlim([-30,110]);
+	text(r3{1}+.1,r3{2}+.1,r3{3}+.1,{r.labels},'FontSize',7, 'Color', 'r')
+	xlim([-125,125]); ylim([-150, 100]); zlim([-75,175]);
 
 	%% plot transformed locations using pcreg, starting with manual
 	mEEG =	pop_chanedit(mEEG, 'nosedir','-Y');
 	cl = pointCloud(tmc);
 	rl = pointCloud(ch2three(r));
-	[tform, ~] = pcregrigid(cl,rl,'Extrapolate',true);
+	[tform, ~] = pcregrigid(cl,rl,'Extrapolate',true, 'verbose', true);
 	tcl = pctransform(cl,tform);
 	tc3 = num2cell(tcl.Location,1);
 	figure;
 	plot3(tc3{:},'*'); hold on;
+	text(tc3{1}+.1,tc3{2}+.1,tc3{3}+.1,{mEEG.chanlocs.labels},'FontSize',7, 'Color', 'b')
 	plot3(r3{:},'*'); hold on;
-	xlim([-100,100]); ylim([-150, 150]); zlim([-30,110]);
+	text(r3{1}+.1,r3{2}+.1,r3{3}+.1,{r.labels},'FontSize',7, 'Color', 'r')
+	xlim([-125,125]); ylim([-150, 100]); zlim([-75,175]);
+	gca.CameraViewAngleMode = 'manual';
+	EEG.etc.pipeline = EEG.etc.pipeline'; % make cell array easier to display
 
 end
 
