@@ -22,9 +22,9 @@ subjs_to_include = {
 	};
 srate = 512;
 %% parfor compatible
-parfor subj_i = 1:length(subjs_to_include)
+for subj_i = 1:length(subjs_to_include)
 	close all;
-
+%%
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir,subj_id,'*_ic.set']);
@@ -42,41 +42,29 @@ parfor subj_i = 1:length(subjs_to_include)
 
 	% EEG.icaweights*EEG.data = EEG.icaact
 	% EEG.data = EEG.icawinv*EEG.icaact
-	
+
+	%%
 	X2 = [veog;heog];
-	X4 = [EEG.data(uveog_i,:); EEG.data(lveog_i,:);EEG.data(lheog_i,:);EEG.data(rheog_i,:)];
+	X4 = [EEG.data(uveog_i,:); EEG.data(lveog_i,:);EEG.data(lheog_i,:);EEG.data(rheog_i,:)]; % works best
 
-% 	% uses bipolar eog channels and channels
-% 	Y = EEG.data(1:end-4,:);
-% 	X = X2;
-% 	B = Y*pinv(X);
-% 	new_Y = Y-B*X;
-% 	eegplot([Y;X4],'data2',[new_Y;X4] , 'dispchans', 32, 'winlength',10);
-
-% 	% uses unipolar eog channels and channels
-% 	Y = EEG.data(1:end-4,:);
-% 	X = X4;
-% 	B = Y*pinv(X);
-% 	new_Y = Y-B*X;
-% 	eegplot([Y;X4],'data2',[new_Y;X4] , 'dispchans', 32, 'winlength',10);
-
-% 	% uses bipolar eog channels and ICs
-% 	Y = EEG.icaact(:,:);
-% 	X = X2;
-% 	B = Y*pinv(X);
-% 	new_Y = Y-B*X;
-% 	eegplot(EEG.data(:,:),'data2',EEG.icawinv*(new_Y), 'dispchans', 32, 'winlength',10);
-
-	% uses all unipolar eog channels and ICs, seems best
-	Y = EEG.icaact(:,:);
-	X = X4;
+	X = EEG.icaact(:,:);
+	ms = mean(X,2);
+	sds = std(X,[],2);
+	X = (X-ms)./sds;
+	Y = X4;
+	Y = (Y-mean(Y,2))./std(Y,[],2);
 	B = Y*pinv(X);
-	new_Y = Y-B*X;
-	EEG.icaact = EEG.icaact-reshape(B*X,size(EEG.icaact));
-% 	eegplot(EEG.data(:,:),'data2',EEG.icawinv*(new_Y), 'dispchans', 32, 'winlength',10);
+	B_inv = pinv(B);
+	X_hat = B_inv*Y;
+	new_icaact = sds.*(X-X_hat)+ms;
+	new_data = EEG.icawinv*new_icaact;
+	EEG.icaact = reshape(new_icaact,size(EEG.icaact));
+	EEG.data = reshape(new_data, size(EEG.data));
+% 	eegplot(new_icaact,'data2', EEG.icaact(:,:), 'dispchans',32,'winlength',10)
+% 	eegplot(new_data,'data2', EEG.data(:,:), 'dispchans',32,'winlength',10)
 
 	EEG.etc.pipeline{end+1} = 'ICs reweighted';
-	EEG.etc.pipeline{end+1} = B;
+	EEG.etc.pipeline{end+1} = B_inv;
 
 % 	% isolate oscillatory ICs (failed)
 % 	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
