@@ -40,7 +40,7 @@ for subj_i = 1:length(subjs_to_include)
 	veog = EEG.data(uveog_i,:)-EEG.data(lveog_i,:);
 	heog = EEG.data(lheog_i,:)-EEG.data(rheog_i,:);
 
-	% EEG.icaweights*EEG.data = EEG.icaact
+	% EEG.icaact = EEG.icaweights*EEG.data
 	% EEG.data = EEG.icawinv*EEG.icaact
 
 	%%
@@ -48,16 +48,15 @@ for subj_i = 1:length(subjs_to_include)
 	X4 = [EEG.data(uveog_i,:); EEG.data(lveog_i,:);EEG.data(lheog_i,:);EEG.data(rheog_i,:)]; % works best
 
 	X = EEG.icaact(:,:);
-	ms = mean(X,2);
-	sds = std(X,[],2);
-	X = (X-ms)./sds;
+	ms = mean(X,2);	sds = std(X,[],2);
+	X = (X-ms)./sds; % normalize
 	Y = X4;
 	Y = (Y-mean(Y,2))./std(Y,[],2);
 	B = Y*pinv(X);
 	B_inv = pinv(B);
-	X_hat = B_inv*Y;
-	new_icaact = sds.*(X-X_hat)+ms;
-	new_data = EEG.icawinv*new_icaact;
+	X_hat = B_inv*Y; % back project from eog
+	new_icaact = sds.*(X-X_hat)+ms; %denormalize
+	new_data = EEG.icawinv*new_icaact; % forward project to channels
 	EEG.icaact = reshape(new_icaact,size(EEG.icaact));
 	EEG.data = reshape(new_data, size(EEG.data));
 % 	eegplot(new_icaact,'data2', EEG.icaact(:,:), 'dispchans',32,'winlength',10)
@@ -92,10 +91,10 @@ for subj_i = 1:length(subjs_to_include)
 
 	% align head model, warp to fiducials and Cz(45)->C21(85), Iz(88)->D23(119)
 % 	eeglab redraw
-% 	EEG = headfit(EEG,subj_id);
-% 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
-% 	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
-% 	EEG.etc.pipeline{end+1} =  'Dipfit run';
+	EEG = headfit(EEG,subj_id);
+	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
+	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
+	EEG.etc.pipeline{end+1} =  'Dipfit run';
 
 	EEG.setname = [old_setname,'_ch'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);

@@ -6,9 +6,10 @@ warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
 addpath([script_dir,'eeglab/'])
 addpath([script_dir,'deps/'])
-eeglab nogui;
+eeglab;
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
+
 
 subjs_to_include = {
 	'571'
@@ -23,6 +24,7 @@ subjs_to_include = {
 	'631'
 	};
 
+%%
 for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
