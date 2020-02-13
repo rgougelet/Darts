@@ -6,7 +6,7 @@ data_dir = [script_dir,'data/'];
 addpath(data_dir)
 rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
-eeglab;
+eeglab nogui;
 
 subjs_to_include = {
 	'571'
@@ -103,13 +103,13 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'EOG channels removed';
 
 	% align head model, warp to fiducials and Cz(45)->C21(85), Iz(88)->D23(119)
-	eeglab redraw
-	EEG = headfit(EEG,subj_id);
-	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
-	
-	% dipfit
-	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
-	EEG.setname = [old_setname,'_dip'];
+% 	eeglab redraw
+% 	EEG = headfit(EEG,subj_id);
+% 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
+% 	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
+% 	EEG.etc.pipeline{end+1} =  'Dipfit run';
+
+	EEG.setname = [old_setname,'_ch'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 	
 end

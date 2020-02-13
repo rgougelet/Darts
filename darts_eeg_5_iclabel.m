@@ -28,7 +28,7 @@ for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
-	subj_set = dir([data_dir, subj_id,'*_dip.set']);
+	subj_set = dir([data_dir, subj_id,'*_ic.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_EEG = EEG;
 
@@ -43,12 +43,12 @@ for subj_i = 1:length(subjs_to_include)
 	% 	EEG = pop_select(EEG,'channel',chans2keep);
 	EEG = pop_iclabel(EEG, 'default');
 	lab = EEG.etc.ic_classification.ICLabel;
+	classes = lab.classes;
 	[sort_c, sort_i] = sort(lab.classifications(:,1),'ascend');
-% 	eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'normed',1)
-	eegplot(EEG.icaact(:,:), 'dispchans',32, 'limits', [0 5], 'normed',1)
-
+	eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'winlength',5)
+	figure; pwelch(EEG.icaact(:,:)',5000,20,[],512,'onesided');
 % 	eegplot(EEG.icaact(sort_i,:)./std(EEG.icaact(sort_i,:),[],2), 'dispchans',32, 'limits', [0 5], 'normed',1)
 	% save set
-% 	EEG.setname = [EEG.setname,'_lap'];
-% 	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
+	EEG.setname = [EEG.setname,'_lab'];
+	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end
