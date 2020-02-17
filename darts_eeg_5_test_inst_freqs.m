@@ -42,7 +42,10 @@ for subj_i = 1:length(subjs_to_include)
 	[n,wn] = buttord(wp,ws,rp,rs);
 	[A,B,C,D] = butter(n,wn, 'bandpass');
 	sos = ss2sos(A,B,C,D);
-
+	x = EEG.data(:,:)';
+	x = sosfilt(sos,x);
+	x = flip(sosfilt(sos,flip(x)));
+	EEG.data = resize(x',size(EEG.data));
 % 		% test filter
 % 		figure; freqz(sos, EEG.srate*100,EEG.srate); xlim([0 10]); ylim([-3 0])
 % 		t = linspace(0,10,EEG.srate*10);
@@ -57,11 +60,11 @@ for subj_i = 1:length(subjs_to_include)
 			' ',num2str(ws),...
 			' ', num2str(rp),...
 			' ', num2str(rs)];
-	x = diff(EEG.icaact(:,:),2)';
+	x = EEG.icaact(:,:)';
 	h = hilbert(x);
 	p = abs(diff(unwrap(angle(h))));
 	inst_freqs = EEG.srate*(p/(2*pi))';
-	plot(inst_freqs(1,:))
+	figure; plot(inst_freqs(1,:))
 %%
 	kurts = kurtosis(inst_freqs,[],2);
 % 	kurts = (kurts-mean(kurts))/std(kurts);
