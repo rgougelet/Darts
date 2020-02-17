@@ -76,14 +76,15 @@ parfor subj_i = 1:length(subjs_to_include)
 	% notch filter the data
 	for harm = 60:60:(EEG.srate/2)
 		nyq = EEG.srate/2;
-		w = pi*(.5/nyq); % hz width
-		s = 2; % half-amplitude cutoff
-		az = w/2; 
-		d = sqrt(s^2-1)*az;
+		bw = pi*(.5/nyq); % hz width
+		s = 2; % half-amplitude (-6 dB) cutoff, 1/4 amp cutoff, s = 4
+		zz = w/2; 
+		d = sqrt(s^2-1)*zz;
 		r = 1-d;
 		t = harm*pi/nyq;
 		b = [1 -2*cos(t) 1];
 		a = [1 -2*r*cos(t) r^2];
+		freqz(b,a, EEG.srate*20,EEG.srate)
 		EEG.data = single(filtfilt(b,a,double(EEG.data(:,:)')))';
 		EEG.etc.pipeline{end+1} = ...
 			['IIR notch, b:',num2str(b),' a:',num2str(a)];
