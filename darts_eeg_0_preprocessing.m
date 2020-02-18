@@ -25,7 +25,7 @@ new_srate = 512;
 
 % preprocess sets
 % parfor compatible
-for subj_i = 1:length(subjs_to_include)
+parfor subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
@@ -69,23 +69,21 @@ for subj_i = 1:length(subjs_to_include)
 	
 	% highpass filter the data
 	nyq = EEG.srate/2;
-	w0 = (1/nyq);
-	hw = .25/nyq;
-	wp = w0-hw;
-	d = .1/nyq;
-	ws = -d+w0-hw;
-	rp = .5;
+	wp = (1/nyq);
+	d = .25/nyq;
+	ws = -d+wp;
+	rp = 1;
 	rs = 100;
 	[n,wn] = buttord(wp,ws,rp,rs);
 	[A,B,C,D] = butter(n,wn, 'high');
 	sos = ss2sos(A,B,C,D);
-% 	[h,f] = freqz(sos, EEG.srate*100, EEG.srate )
-% 	figure;	freqz(sos, EEG.srate*100, EEG.srate ); xlim([0 5]);
-	mean(abs(1-abs(h(f>=1))))
+% 	[h,f] = freqz(sos, EEG.srate*20, EEG.srate );
+% 	figure;	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]);
+% 	mean(abs(mag2db(abs(h(f>=1)))))
 	x = EEG.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
-	EEG.data = resize(x',size(EEG.data));
+	EEG.data = reshape(x',size(EEG.data));
 
 	EEG.etc.pipeline{end+1} = ...
 			['Butterworth SOS HP: ',num2str(wp),...
@@ -101,28 +99,27 @@ for subj_i = 1:length(subjs_to_include)
 		w0 = (harm/nyq);
 		hw = .25/nyq;
 		wp = [w0-hw w0+hw];
-		d = .05/nyq;
+		d = .1/nyq;
 		ws = [wp(1)+d wp(2)-d];
-		rp = .5;
+		rp = 1;
 		rs = 100;
 		[n,wn] = buttord(wp,ws,rp,rs);
 		[A,B,C,D] = butter(n,wn, 'stop');
 		sos = ss2sos(A,B,C,D);
-% 		[h,f] = freqz(sos, EEG.srate*1000, EEG.srate );
-% 		figure; freqz(sos, EEG.srate*100, EEG.srate ); xlim([harm-1 harm+1]); 
+% 		[h,f] = freqz(sos, EEG.srate*20, EEG.srate );
+% 		figure; freqz(sos, EEG.srate*20, EEG.srate ); xlim([harm-1 harm+1]); 
 		x = EEG.data(:,:)';
 		x = sosfilt(sos,x);
 		x = flip(sosfilt(sos,flip(x)));
-		EEG.data = resize(x',size(EEG.data));
+		EEG.data = reshape(x',size(EEG.data));
 	
 			EEG.etc.pipeline{end+1} = ...
 			['Butterworth SOS Notch: ',num2str(wp),...
-			' ',num2str(ws),...
-			' ', num2str(rp),...
-			' ', num2str(rs)
-			' ', num2str(n)];
+			', ',num2str(ws),...
+			', ', num2str(rp),...
+			', ', num2str(rs), ...
+			', ', num2str(n)];
 	end
-	toc
 	
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
