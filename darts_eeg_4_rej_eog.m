@@ -1,13 +1,13 @@
 clear; close all; clc;
 try
 	script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+	rmpath('/data/common/matlab/eeglab')
 catch
 	script_dir = 'G:/darts/';
 end
 cd(script_dir);
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
-rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
 eeglab;
 
