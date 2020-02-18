@@ -7,7 +7,7 @@
 	% reject channels
 	if strcmp(subj_id, '580')
 		rej_chans = {'A12'};
-	elseif strcmp(subj_id, '607') % check early and last large bursts
+	elseif strcmp(subj_id, '607')
 		rej_chans = {'A28', 'D10'};
 	elseif strcmp(subj_id, '621')
 		rej_chans = {'B32'};
