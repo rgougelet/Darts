@@ -77,7 +77,9 @@ parfor subj_i = 1:length(subjs_to_include)
 	[n,wn] = buttord(wp,ws,rp,rs);
 	[A,B,C,D] = butter(n,wn, 'high');
 	sos = ss2sos(A,B,C,D);
-% 	[h,f] = freqz(sos, EEG.srate*20, EEG.srate );
+	[h,f] = freqz(sos, EEG.srate*100, EEG.srate );
+	[~,i] = min(abs(mag2db(abs(h))+6))
+	f(i) % -6dB cutoff
 % 	figure;	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]);
 % 	mean(abs(mag2db(abs(h(f>=1)))))
 	x = EEG.data(:,:)';
@@ -86,10 +88,11 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.data = reshape(x',size(EEG.data));
 
 	EEG.etc.pipeline{end+1} = ...
-			['Butterworth SOS HP: ',num2str(wp),...
+			['Butterworth SOS HP: ', ...
+				num2str(wp),...
 			' ',num2str(ws),...
 			' ', num2str(rp),...
-			' ', num2str(rs)
+			' ', num2str(rs),...
 			' ', num2str(n)];
 		
 	% notch filter the data
@@ -106,15 +109,19 @@ parfor subj_i = 1:length(subjs_to_include)
 		[n,wn] = buttord(wp,ws,rp,rs);
 		[A,B,C,D] = butter(n,wn, 'stop');
 		sos = ss2sos(A,B,C,D);
-% 		[h,f] = freqz(sos, EEG.srate*20, EEG.srate );
-% 		figure; freqz(sos, EEG.srate*20, EEG.srate ); xlim([harm-1 harm+1]); 
+		[h,f] = freqz(sos, EEG.srate*100, EEG.srate );
+		[~,i] = mink(abs(mag2db(abs(h))+6),2);
+		f(i) % -6dB cutoff
+% 		figure; freqz(sos, EEG.srate*20, EEG.srate ); xlim([harm-1 harm+1]);
+
 		x = EEG.data(:,:)';
 		x = sosfilt(sos,x);
 		x = flip(sosfilt(sos,flip(x)));
 		EEG.data = reshape(x',size(EEG.data));
 	
 			EEG.etc.pipeline{end+1} = ...
-			['Butterworth SOS Notch: ',num2str(wp),...
+			['Butterworth SOS Notch: ', ...
+			num2str(wp),...
 			', ',num2str(ws),...
 			', ', num2str(rp),...
 			', ', num2str(rs), ...

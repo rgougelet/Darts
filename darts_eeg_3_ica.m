@@ -25,7 +25,7 @@ srate = 512;
 
 %%
 % binica is parfor compatible
-parfor subj_i = 1:length(subjs_to_include)
+	parfor subj_i = 1:length(subjs_to_include)
 	cd(script_dir);
 
 	% load dataset
@@ -44,7 +44,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	% reject channels
 	if strcmp(subj_id, '580')
 		rej_chans = {'A12'};
-	elseif strcmp(subj_id, '607') % also has large bursts early and late in recording, hoping they will be removed
+	elseif strcmp(subj_id, '607')
 		rej_chans = {'A28', 'D10'};
 	elseif strcmp(subj_id, '621')
 		rej_chans = {'B32'};
@@ -75,6 +75,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'Average reref.';
 	
 	% amica
+	% not parfor compatible
 	% out_dir = [data_dir,'amicaResults/' EEG.setname,'/'];
 	% mkdir(out_dir);
 	% runamica15(EEG, 'num_chans', EEG.nbchan,...
@@ -99,6 +100,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'BinICA run.';
 	EEG.etc.pipeline{end+1} =  EEG.icaweights;
 	EEG.etc.pipeline{end+1} =  EEG.icasphere;
+	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 	
 end
