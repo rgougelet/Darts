@@ -31,25 +31,27 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_EEG = EEG;
 
+	tic
 	nyq = EEG.srate/2;
 	w0 = (5.5/nyq);
 	hw = 2.5/nyq;
 	wp = [w0-hw w0+hw];
 	hzp = wp*nyq;
-	d = .5/nyq;
+	d = .1/nyq;
 	ws = [-d+wp(1) d+wp(2)];
 	hzs = ws*nyq;
 	rp = .01;
-	rs = 60;
+	rs = 6;
 	[n,wn] = buttord(wp,ws,rp,rs);
+	hzn = wn*nyq;
 	[A,B,C,D] = butter(n,wn, 'bandpass');
 	sos = ss2sos(A,B,C,D);
-% 	figure; freqz(sos,EEG.srate*20,EEG.srate); ylim([-rs 0]);
+% 	figure; freqz(sos,EEG.srate*50,EEG.srate); %ylim([-rs 0]);
 
 	x = EEG.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
-	EEG.data = reshape(x',size(EEG.data));
+	xx = reshape(x',size(EEG.data));
 
 % 		% test filter
 % 		figure; freqz(sos, EEG.srate*100,EEG.srate); xlim([0 10]); ylim([-3 0])
@@ -73,17 +75,17 @@ for subj_i = 1:length(subjs_to_include)
 	h = hilbert(x);
 	p = abs(diff(unwrap(angle(h))));
 	inst_freqs = EEG.srate*(p/(2*pi))';
-	figure; plot((1:10000)/512,inst_freqs(1,1:10000))
+% 	figure; plot((1:10000)/512,inst_freqs(1,1:10000))
 %%
-	kurts = kurtosis(inst_freqs,[],2);
+% 	kurts = kurtosis(inst_freqs,[],2);
 % 	kurts = (kurts-mean(kurts))/std(kurts);
 % 	skews = (mean(inst_freqs,2)-median(inst_freqs,2))./std(inst_freqs,[],2);
 % 	skews = (skews-mean(skews))/std(skews);
 
 % 	[~, sort_i] = sort(sqrt(kurts.^2-(skews).^2),'ascend');
-	[~, sort_i] = sort(kurts,'ascend');
+% 	[~, sort_i] = sort(kurts,'ascend');
 
-	eegplot(EEG.icaact(:,:), 'dispchans',32, 'winlength',5)
+% 	eegplot(EEG.icaact(:,:), 'dispchans',32, 'winlength',5)
 	%%
 % 	ff_corr = corr(inst_freqs);
 % 	ff_corr(tril(true(size(ff_corr)))) = nan;
