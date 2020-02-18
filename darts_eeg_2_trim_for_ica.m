@@ -1,6 +1,6 @@
 close all; clc; clear;
-% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-script_dir = 'G:/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = 'G:/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
@@ -8,7 +8,8 @@ addpath([script_dir,'eeglab/'])
 addpath([script_dir,'deps/'])
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
-eeglab nogui;
+eeglab;
+
 %%
 subjs_to_include = {
 		'571'
@@ -23,9 +24,10 @@ subjs_to_include = {
 		'631'
 	};
 srate = 512;
-overwrite_rej = false;
+overwrite_rej = false; % SET TO TRUE ONLY IF YOU WANT TO REDO MANUAL CLEANING
 
 %%
+% parfor compatible
 parfor subj_i = 1:length(subjs_to_include)
 
 	% load dataset
@@ -45,7 +47,8 @@ parfor subj_i = 1:length(subjs_to_include)
 		epoch = old_EEG.data(:,in.start_event_latencies(event_i):in.end_event_latencies(event_i)-384);
 		new_EEG.data = [new_EEG.data,epoch-mean(epoch,2)];
 	end
-	EEG = new_EEG;
+	EEG = new_EEG;	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
+
 	EEG.pnts = length(new_EEG.data);
 	EEG.event = [];
 	EEG = eeg_checkset(EEG);
@@ -65,12 +68,13 @@ parfor subj_i = 1:length(subjs_to_include)
 	rej = rej(strcmp({EEG.event.type},'split'));
 	EEG = pop_editeventvals(EEG,'delete',rej);
 	EEG = eeg_checkset(EEG);
-	EEG.etc.pipeline{end+1} =  'Separated into 250 ms chunks forEEG.reject.rejmanual easier cleaning';
+	EEG.etc.pipeline{end+1} =  'Separated into 250 ms chunks for easier cleaning';
 	
 	% redo manual noise removal
 	if overwrite_rej
 		EEG = rm_sds(EEG,figure(2));
-		rej_ep_inds = find(EEG.reject.rejmanual);
+		rej_ep_inds = find(EEG.reject	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
+.rejmanual);
 		save([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
 	else
 		in = load([data_dir,old_setname,'_trim.mat'],'rej_ep_inds');
