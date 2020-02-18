@@ -25,7 +25,7 @@ new_srate = 512;
 
 % preprocess sets
 % parfor compatible
-parfor subj_i = 1:length(subjs_to_include)
+for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
@@ -49,7 +49,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	uveog_i= find(strcmp({EEG.chanlocs.labels},[ex,'3']));
 	lveog_i = find(strcmp({EEG.chanlocs.labels},[ex,'4']));
 	lheog_i = find(strcmp({EEG.chanlocs.labels},[ex,'5']));
-	rheog_i = find(strcmp({EEG.chanlocs.labels},[ex,'6']))
+	rheog_i = find(strcmp({EEG.chanlocs.labels},[ex,'6']));
 	EEG=pop_chanedit(EEG, 'changefield',{m1_i,'labels','M1'});
 	EEG=pop_chanedit(EEG, 'changefield',{m2_i,'labels','M2'});
 	EEG=pop_chanedit(EEG, 'changefield',{uveog_i,'labels','UVEOG'});
@@ -68,27 +68,61 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref';
 	
 	% highpass filter the data
-	[b,a] = butter(5,1/(EEG.srate/2),'high');
-	EEG.data = single(filtfilt(b,a,double(EEG.data')))';
-	EEG.etc.pipeline{end+1} = ...
-		['Butterworth HP, b:',num2str(b),' a:',num2str(a)];
+	nyq = EEG.srate/2;
+	w0 = (1/nyq);
+	hw = .25/nyq;
+	wp = w0-hw;
+	d = .1/nyq;
+	ws = -d+w0-hw;
+	rp = .5;
+	rs = 100;
+	[n,wn] = buttord(wp,ws,rp,rs);
+	[A,B,C,D] = butter(n,wn, 'high');
+	sos = ss2sos(A,B,C,D);
+% 	[h,f] = freqz(sos, EEG.srate*100, EEG.srate )
+% 	figure;	freqz(sos, EEG.srate*100, EEG.srate ); xlim([0 5]);
+	mean(abs(1-abs(h(f>=1))))
+	x = EEG.data(:,:)';
+	x = sosfilt(sos,x);
+	x = flip(sosfilt(sos,flip(x)));
+	EEG.data = resize(x',size(EEG.data));
 
+	EEG.etc.pipeline{end+1} = ...
+			['Butterworth SOS HP: ',num2str(wp),...
+			' ',num2str(ws),...
+			' ', num2str(rp),...
+			' ', num2str(rs)
+			' ', num2str(n)];
+		
 	% notch filter the data
+	tic
 	for harm = 60:60:(EEG.srate/2)
 		nyq = EEG.srate/2;
-		bw = pi*(.5/nyq); % hz width
-		s = 2; % half-amplitude (-6 dB) cutoff, 1/4 amp cutoff, s = 4
-		zz = w/2; 
-		d = sqrt(s^2-1)*zz;
-		r = 1-d;
-		t = harm*pi/nyq;
-		b = [1 -2*cos(t) 1];
-		a = [1 -2*r*cos(t) r^2];
-		freqz(b,a, EEG.srate*20,EEG.srate)
-		EEG.data = single(filtfilt(b,a,double(EEG.data(:,:)')))';
-		EEG.etc.pipeline{end+1} = ...
-			['IIR notch, b:',num2str(b),' a:',num2str(a)];
+		w0 = (harm/nyq);
+		hw = .25/nyq;
+		wp = [w0-hw w0+hw];
+		d = .05/nyq;
+		ws = [wp(1)+d wp(2)-d];
+		rp = .5;
+		rs = 100;
+		[n,wn] = buttord(wp,ws,rp,rs);
+		[A,B,C,D] = butter(n,wn, 'stop');
+		sos = ss2sos(A,B,C,D);
+% 		[h,f] = freqz(sos, EEG.srate*1000, EEG.srate );
+% 		figure; freqz(sos, EEG.srate*100, EEG.srate ); xlim([harm-1 harm+1]); 
+		x = EEG.data(:,:)';
+		x = sosfilt(sos,x);
+		x = flip(sosfilt(sos,flip(x)));
+		EEG.data = resize(x',size(EEG.data));
+	
+			EEG.etc.pipeline{end+1} = ...
+			['Butterworth SOS Notch: ',num2str(wp),...
+			' ',num2str(ws),...
+			' ', num2str(rp),...
+			' ', num2str(rs)
+			' ', num2str(n)];
 	end
+	toc
 	
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent

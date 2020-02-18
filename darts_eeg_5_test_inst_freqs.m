@@ -46,6 +46,7 @@ for subj_i = 1:length(subjs_to_include)
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
 	EEG.data = resize(x',size(EEG.data));
+	
 % 		% test filter
 % 		figure; freqz(sos, EEG.srate*100,EEG.srate); xlim([0 10]); ylim([-3 0])
 % 		t = linspace(0,10,EEG.srate*10);
