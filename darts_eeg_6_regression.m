@@ -9,8 +9,18 @@ close all;
 data_dir = [script_dir,'/data/'];
 addpath(data_dir)
 
-subjs_to_include = {'571', '579', '580', ...
-	'607', '608', '616', '619', '621', '627', '631'};
+subjs_to_include = {
+	'571'
+	'579'
+	'580'
+	'607'
+	'608'
+	'616'
+	'619'
+	'621'
+	'627'
+	'631'
+	};
 srate = 512;
 
 % init labels for diff regression vars
@@ -45,7 +55,9 @@ for subj_i = 1:length(subjs_to_include)
 	
 	% bandpass filter at desired freqs
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
-	EEG_theta = pop_eegfiltnew(EEG, 3, 7);
+	tic
+	EEG_theta = pop_eegfiltnew(EEG, 'locutoff', 3, 'hicutoff', 8);
+toc
 	EEG_alpha = pop_eegfiltnew(EEG, 8, 12);
 	EEG_gamma = pop_eegfiltnew(EEG, 30);
 	EEGs = {EEG_theta,EEG_alpha, EEG_gamma};

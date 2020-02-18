@@ -9,7 +9,7 @@ data_dir = [script_dir,'data/'];
 addpath(data_dir)
 rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
-eeglab nogui;
+eeglab;
 
 subjs_to_include = {
 	'571'
@@ -61,7 +61,7 @@ eeglab nogui;
 	X_hat = B_inv*Y; % back project from eog
 	
 	new_icaact= sdx.*(X-X_hat)+mx; %denormalize
-	eegplot(new_icaact, 'dispchans',32,'winlength',10, 'spacing', 30)
+% 	eegplot(new_icaact, 'dispchans',32,'winlength',10, 'spacing', 30)
 % 	eegplot(EEG.icaact(:,:), 'dispchans',32,'winlength',10, 'spacing', 30)
 
 	new_data = EEG.icawinv*new_icaact; % forward project to channels
@@ -72,7 +72,10 @@ eeglab nogui;
 	EEG.data = reshape(new_data, size(EEG.data));
 
 	EEG.etc.pipeline{end+1} = 'ICs reweighted';
-	EEG.etc.pipeline{end+1} = B_inv;
+	EEG.etc.eog.B_inv = B_inv;
+	EEG.etc.eog.sdx = sdx;
+	EEG.etc.eog.mx = mx;
+	parsave([subj_id,'_eog'],'B_inv', 'sdx','mx');
 
 % 	% isolate oscillatory ICs (failed)
 % 	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
@@ -103,8 +106,9 @@ eeglab nogui;
 	EEG.etc.pipeline{end+1} =  'Channels co-registered using headfit.m';
 	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
 	EEG.etc.pipeline{end+1} =  'Dipfit run';
+	dipfit = EEG.dipfit;
+	parsave([subj_id,'_dipfit'],'dipfit');
 
 	EEG.setname = [old_setname,'_ch'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
-	
 end
