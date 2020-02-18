@@ -33,20 +33,24 @@ for subj_i = 1:length(subjs_to_include)
 
 	nyq = EEG.srate/2;
 	w0 = (5.5/nyq);
-	bw = 5.05/nyq;
-	wp = [w0-bw/2 w0+bw/2];
-	d = 1/nyq;
-	ws = [-d+w0-bw/2 d+w0+bw/2];
-	rp = 5;
-	rs = 100;
+	hw = 2.5/nyq;
+	wp = [w0-hw w0+hw];
+	hzp = wp*nyq;
+	d = .5/nyq;
+	ws = [-d+wp(1) d+wp(2)];
+	hzs = ws*nyq;
+	rp = .01;
+	rs = 60;
 	[n,wn] = buttord(wp,ws,rp,rs);
 	[A,B,C,D] = butter(n,wn, 'bandpass');
 	sos = ss2sos(A,B,C,D);
+% 	figure; freqz(sos,EEG.srate*20,EEG.srate); ylim([-rs 0]);
+
 	x = EEG.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
-	EEG.data = resize(x',size(EEG.data));
-	
+	EEG.data = reshape(x',size(EEG.data));
+
 % 		% test filter
 % 		figure; freqz(sos, EEG.srate*100,EEG.srate); xlim([0 10]); ylim([-3 0])
 % 		t = linspace(0,10,EEG.srate*10);
@@ -57,15 +61,19 @@ for subj_i = 1:length(subjs_to_include)
 % 		figure; plot(t,osc); hold on; plot(t,x); plot(t,osc+noise)
 
 	EEG.etc.pipeline{end+1} = ...
-			['Butterworth SOS: ',num2str(wp),...
-			' ',num2str(ws),...
-			' ', num2str(rp),...
-			' ', num2str(rs)];
+			['Butterworth SOS BP: ',num2str(wp),...
+			', ', num2str(ws),...
+			', ', num2str(rp),...
+			', ', num2str(rp),...
+			', ', num2str(n)];
+	EEG.icaact = reshape(EEG.icaweights*EEG.data(:,:), size(EEG.icaact));
+
+	% hilbert transform
 	x = EEG.icaact(:,:)';
 	h = hilbert(x);
 	p = abs(diff(unwrap(angle(h))));
 	inst_freqs = EEG.srate*(p/(2*pi))';
-	figure; plot(inst_freqs(1,:))
+	figure; plot((1:10000)/512,inst_freqs(1,1:10000))
 %%
 	kurts = kurtosis(inst_freqs,[],2);
 % 	kurts = (kurts-mean(kurts))/std(kurts);
