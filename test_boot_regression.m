@@ -1,51 +1,27 @@
-clc; clear; close all;
-corr_step = .1;
-v_corr = (corr_step:corr_step:1);
-n_sims = 1000;
-n_obs = 10000;
-n_var = 10;
-b = rand(1,n_var);
-res = randn(1,n_obs);
-Z = randn(n_var,n_obs);
-corr_i = nchoosek(1:n_var,2);
-% corrs = -1+2*rand(1,length(corr_i));
-corrs = rand(1,length(corr_i));
+clear; close all; clc;
+% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = 'G:/darts/';
+cd(script_dir);
+addpath([script_dir,'deps/'])
+out_dir = [script_dir,'mc/'];
+mkdir(out_dir);
 
-corrm = nan(n_var);
-corrm(tril(true(size(corrm)),-1)) = corrs;
-corrm = corrm';
-corrm(tril(true(size(corrm)),-1)) = corrs;
-corrm(eye(size(corrm))==1) = 1;
-[V,D] = eig(corrm);
-X = V*sqrt(D)*Z;
-X = X';
-heatmap(corrm)
-corrx = corr(X);
-figure; heatmap(corrx)
+s = 3;
+n_mc_sims = 2000;
+n_boot_sims = 2000;
+n_obs = 2000;
+n_vars = 10;
+n_sd = 5;
 
-% figure; heatmap(corr(X'))
-% for corr_ii = 1:length(corr_i)
-% 	i1 = corr_i(corr_ii,1);
-% 	i2 = corr_i(corr_ii,2);
-% 	covv(i1,i2) = cov(corr_ii);
-% 	covv(i2,i1) = cov(corr_ii);
-% end
-% covv(eye(size(covv))==1) = var(z);
-% [L,p] = chol(covv,'lower');
-% tril(true(size(covv)),-1) = triu(true(size(covv)),1)
-% clear szs
-% close all
-% for n_var = 2:100
-% 	corr_i = nchoosek(1:n_var,2);
-% 	szs(n_var) = length(corr_i);
-% end
-% figure; plot(1./szs)
-% mod(1,1./szs)
-% for avg_corr = v_corr
-% 	corrs = (1:length(corr_i))./length(corr_i);
-% 
-% 	corr_mat = avg_corr*rand(1,length(corr_i))
+for sim_i = 1:n_mc_sims
+	tic
+	svnm = [out_dir,'mc',num2str(sim_i),'.mat'];
+	if exist(svnm,'file')
+		continue
+	end
+	runmc(s, n_sd, n_obs, n_vars, n_boot_sims, svnm);
+	toc
+end
 
-% end
-
-% y = b*x;
+% mxr = mean(arrayfun(@(x) mean(mean((x.XR).^2)), mcs))
+% mcs.XR;
