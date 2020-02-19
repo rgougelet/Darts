@@ -9,6 +9,7 @@ cd(script_dir);
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
 addpath([script_dir,'eeglab/'])
+addpath([script_dir,'deps/'])
 eeglab;
 
 subjs_to_include = {
@@ -24,16 +25,15 @@ subjs_to_include = {
 	'631'
 	};
 srate = 512;
-%% parfor compatible
+%% parfor compatibl
 parfor subj_i = 1:length(subjs_to_include)
-eeglab nogui;
+	eeglab nogui;
 
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir,subj_id,'*_ic.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
-	old_EEG = EEG;
 
 	% get eog inds
 	uveog_i= find(strcmp({EEG.chanlocs.labels},'UVEOG'));
@@ -75,7 +75,7 @@ eeglab nogui;
 	EEG.etc.eog.B_inv = B_inv;
 	EEG.etc.eog.sdx = sdx;
 	EEG.etc.eog.mx = mx;
-	parsave([subj_id,'_eog'],'B_inv', 'sdx','mx');
+	parsave([subj_id,'_eog'],{B_inv, sdx,mx},{'B_inv', 'sdx','mx'});
 
 % 	% isolate oscillatory ICs (failed)
 % 	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
@@ -107,7 +107,7 @@ eeglab nogui;
 	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
 	EEG.etc.pipeline{end+1} =  'Dipfit run';
 	dipfit = EEG.dipfit;
-	parsave([subj_id,'_dipfit'],'dipfit');
+	parsave([subj_id,'_dipfit'],dipfit, 'dipfit');
 
 	EEG.setname = [old_setname,'_ch'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
