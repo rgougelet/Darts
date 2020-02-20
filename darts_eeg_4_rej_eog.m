@@ -75,7 +75,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.eog.B_inv = B_inv;
 	EEG.etc.eog.sdx = sdx;
 	EEG.etc.eog.mx = mx;
-	parsave([subj_id,'_eog'],{B_inv, sdx,mx},{'B_inv', 'sdx','mx'});
+	parsave([data_dir, subj_id,'_eog'],{B_inv, sdx,mx},{'B_inv', 'sdx','mx'});
 
 % 	% isolate oscillatory ICs (failed)
 % 	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
@@ -107,7 +107,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_multifit(EEG, [1:size(EEG.icaact,1)] ,'threshold',100,'rmout','on','plotopt',{'normlen','on'});
 	EEG.etc.pipeline{end+1} =  'Dipfit run';
 	dipfit = EEG.dipfit;
-	parsave([subj_id,'_dipfit'],dipfit, 'dipfit');
+	parsave([data_dir,subj_id,'_dipfit'],dipfit, 'dipfit');
 
 	EEG.setname = [old_setname,'_ch'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);

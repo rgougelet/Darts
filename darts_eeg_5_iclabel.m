@@ -1,6 +1,6 @@
 clear; close all; clc;
-% script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-script_dir = 'G:/darts/';
+script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+% script_dir = 'G:/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab/')
@@ -47,9 +47,9 @@ for subj_i = 1:length(subjs_to_include)
 	lab = EEG.etc.ic_classification.ICLabel;
 	classes = lab.classes;
 	[sort_c, sort_i] = sort(lab.classifications(:,1),'ascend');
-	eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'winlength',5)
+	figure; eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'winlength',5)
 
 	% save set
-% 	EEG.setname = [EEG.setname,'_lab'];
-% 	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
+	EEG.setname = [EEG.setname,'_lab'];
+	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end

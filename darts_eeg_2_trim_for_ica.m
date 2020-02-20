@@ -73,8 +73,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	% redo manual noise removal
 	if overwrite_rej
 		EEG = rm_sds(EEG,figure(2));
-		rej_ep_inds = find(EEG.reject	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
-.rejmanual);
+		rej_ep_inds = find(EEG.reject.rejmanual);
 		save([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
 	else
 		in = load([data_dir,old_setname,'_trim.mat'],'rej_ep_inds');

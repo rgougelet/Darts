@@ -56,9 +56,10 @@ function runmc(s,n_sd, n_obs, n_vars, n_boot, svnm)
 	F_p = fcdf(F,dfm,dfe, 'upper');
 
 	% run bootstrap
-	boot = runboot(X,yr,resh,n_boot);
+	bhs = runboot(X,yr,resh,n_boot);
 
 	% save
+	clear q lm
 	save(svnm,'-v6')
 end
 

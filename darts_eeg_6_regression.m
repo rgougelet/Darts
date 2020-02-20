@@ -65,7 +65,7 @@ toc
 	% correct data collection issues
 	% the problem is there are some trials in the
 	% xlsx file that are not in eeg
-	load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencys'])
+	load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencies'])
 	n_snap_trials = sum(xlsx.subject == str2double(subj_id));
 	n_eeg_trials = length(end_event_latencys);
 	eeg_trial_strs = str2num(end_event_strings(:,1:4)); % ignore warning, use str2num
