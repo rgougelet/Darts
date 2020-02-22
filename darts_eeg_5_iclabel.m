@@ -12,16 +12,16 @@ addpath(data_dir)
 
 
 subjs_to_include = {
-	'571'
-	'579'
-	'580'
+% 	'571'
+% 	'579'
+% 	'580'
 	'607'
-	'608'
-	'616'
-	'619'
-	'621'
-	'627'
-	'631'
+% 	'608'
+% 	'616'
+% 	'619'
+% 	'621'
+% 	'627'
+% 	'631'
 	};
 
 %%
@@ -47,9 +47,11 @@ for subj_i = 1:length(subjs_to_include)
 	lab = EEG.etc.ic_classification.ICLabel;
 	classes = lab.classes;
 	[sort_c, sort_i] = sort(lab.classifications(:,1),'ascend');
-	figure; eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'winlength',5)
+% 	figure; eegplot(EEG.icaact(sort_i,:), 'dispchans',32, 'limits', [0 5], 'winlength',5)
+	EEG.etc.pipeline{end+1} =  'Labels saved;
 
 	% save set
 	EEG.setname = [EEG.setname,'_lab'];
+	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
 	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end

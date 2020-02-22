@@ -10,39 +10,32 @@ eeglab; close;
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
 
-
 subjs_to_include = {
-	'571'
-	'579'
-	'580'
-	'607'
-	'608'
-	'616'
-	'619'
-	'621'
-	'627'
-	'631'
+		'571'
+		'579'
+		'580'
+% 	'607'
+% 	'608'
+% 	'616'
+% 	'619'
+% 	'621'
+% 	'627'
+% 	'631'
 	};
 srate = 512;
 
 %%
-for subj_i = 1:length(subjs_to_include)
+parfor subj_i = 1:length(subjs_to_include)
 	
 	%% load post-ica dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir, subj_id,'*_ic.set']);
 	icEEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	
-	%% load pre-ica data
+	%% load pre-ica dataset
 	subj_set = dir([data_dir, subj_id,'*_',num2str(srate),'.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
-	
-	%% copy ic results
-	EEG.icaweights = icEEG.icaweights;
-	EEG.icasphere  = icEEG.icasphere;
-	EEG = eeg_checkset(EEG, 'ica');
-	EEG.etc.pipeline{end+1} =  ['ICs copied from: ', icEEG.setname];
 	
 	%% remove rejected channels and interp
 	if strcmp(subj_id, '580')
@@ -62,7 +55,21 @@ for subj_i = 1:length(subjs_to_include)
 		rej_chan_inds(end+1) = find(strcmp(labs,rej_chan));
 	end
 	EEG = pop_interp(EEG, rej_chan_inds, 'spherical');
-	EEG.etc.pipeline{end+1} =  ['Channels  removed and interpolated: ', num2str(rej_chan_inds)];
+	EEG.etc.pipeline{end+1} =  ['Channel inds removed and interpolated: ', num2str(rej_chan_inds)];
+	
+	%% avg ref
+	EEG.nbchan = EEG.nbchan+1;
+	EEG.data(end+1,:) = zeros(1, EEG.trials*EEG.pnts);
+	EEG.chanlocs(1,EEG.nbchan).labels = 'initialReference';
+	EEG = pop_reref(EEG, []);
+	EEG = pop_select( EEG,'nochannel',{'initialReference'});
+	EEG.etc.pipeline{end+1} =  'Average reref.';
+	
+	%% copy ic results
+	EEG.icaweights = icEEG.icaweights;
+	EEG.icasphere  = icEEG.icasphere;
+	EEG = eeg_checkset(EEG, 'ica');
+	EEG.etc.pipeline{end+1} =  ['ICs copied from: ', icEEG.setname];
 	
 	%% redo eog pipeline
 	uveog_i= find(strcmp({EEG.chanlocs.labels},'UVEOG'));
@@ -71,9 +78,7 @@ for subj_i = 1:length(subjs_to_include)
 	rheog_i = find(strcmp({EEG.chanlocs.labels},'RHEOG'));
 	
 	in = load([data_dir, subj_id,'_eog']);
-	mx = in.mx;
-	sdx = in.sdx;
-	B_inv = in.B_inv;
+	mx = in.mx;	sdx = in.sdx;	B_inv = in.B_inv;
 	Y = [EEG.data(uveog_i,:); EEG.data(lveog_i,:);EEG.data(lheog_i,:);EEG.data(rheog_i,:)]; % works best
 	X = EEG.icaact(:,:);
 	X = (X-mx)./sdx; % normalize
@@ -101,7 +106,7 @@ for subj_i = 1:length(subjs_to_include)
 	EEG.etc.ic_classification.ICLabel = labEEG.etc.ic_classification.ICLabel;
 	EEG = eeg_checkset(EEG);
 	
-	lab = EEG.etc.ic_classification.ICLabel;
+	lab = labEEG.etc.ic_classification.ICLabel;
 	classif = [(1:length(lab.classifications))', lab.classifications];
 	rej_i = classif(:,2)<.75;
 	% 	classif(rej_i,:) = [];
@@ -109,7 +114,13 @@ for subj_i = 1:length(subjs_to_include)
 	EEG = pop_subcomp( EEG, find(rej_i), 0);
 	EEG.etc.pipeline{end+1} =  'Non-brain ICs removed';
 	EEG.etc.pipeline{end+1} =  find(rej_i);
-
+	
+	%	apply laplacian
+	X = [EEG.chanlocs.X];
+	Y = [EEG.chanlocs.Y];
+	Z = [EEG.chanlocs.Z];
+	EEG.data = laplacian_perrinX(EEG.data,X,Y,Z);
+	
 	%% reduce to clusters
 	chan_clusts = {...
 		{'C11','C12','C6','C10', 'C15', 'C16','C17'},...% front middle
@@ -124,7 +135,7 @@ for subj_i = 1:length(subjs_to_include)
 	newEEG.nbchan = length(chan_clusts);
 	newEEG.pnts   = size(oldEEG.data,2);
 	newEEG.etc = oldEEG.etc;
-
+	
 	for chan_clust_i = 1:length(chan_clusts)
 		chan_clust = chan_clusts{chan_clust_i};
 		clust_lab = clust_labs{chan_clust_i};
@@ -135,12 +146,6 @@ for subj_i = 1:length(subjs_to_include)
 			chan_i = [chan_i, find(strcmpi(chan_lab,{oldEEG.chanlocs.labels}))];
 		end
 		
-		% apply laplacian
-		% 	X = [EEG.chanlocs.X];
-		% 	Y = [EEG.chanlocs.Y];
-		% 	Z = [EEG.chanlocs.Z];
-		% 	EEG.data = laplacian_perrinX(EEG.data,X,Y,Z);
-		
 		% add clusters as channels
 		newEEG.data(end+1,:)  = mean(oldEEG.data(chan_i,:),1);
 	end
@@ -149,7 +154,8 @@ for subj_i = 1:length(subjs_to_include)
 	newEEG.etc.pipeline{end+1} =  chan_clusts;
 	
 	% save set
-	newEEG.setname = [old_setname,'_clust'];
+	EEG = newEEG;
+	EEG.setname = [old_setname,'_lap_clust'];
 	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
-	pop_saveset(EEG, 'filename', newEEG.setname,'filepath', data_dir);
+	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end

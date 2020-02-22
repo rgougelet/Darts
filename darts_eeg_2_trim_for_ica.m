@@ -44,7 +44,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	new_EEG = old_EEG;
 	new_EEG.data = [];
 	for event_i = 1:length(in.start_event_latencies)
-		epoch = old_EEG.data(:,in.start_event_latencies(event_i):in.end_event_latencies(event_i)-384);
+		epoch = old_EEG.data(:,in.start_event_latencies(event_i):in.end_event_latencies(event_i)-384); % 384 to correct for motion artifacts
 		new_EEG.data = [new_EEG.data,epoch-mean(epoch,2)];
 	end
 	EEG = new_EEG;	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
