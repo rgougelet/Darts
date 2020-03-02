@@ -5,7 +5,7 @@ cd(script_dir);
 addpath([script_dir,'eeglab/']);
 data_dir = [script_dir,'data/'];
 addpath(data_dir);
-% eeglab; close;
+eeglab; close;
 subjs_to_include = {
 	'571'
 	'579'
@@ -31,16 +31,16 @@ interval_labs = {'delay', 'pre_throw'};
 r = struct;
 headers = txt(1,:);
 for k=1:numel(headers)
-		for ri = 1:length(num)
-			r(ri).(headers{k})=num(ri,k);
-		end
+	for ri = 1:length(num)
+		r(ri).(headers{k})=num(ri,k);
+	end
 end
 
 % initialize eeg columns to add to the behav columns
 nans = num2cell(nan(length(r),1));
 for chan_lab = chan_labs
 	for freq_lab = freq_labs
-		for interval_lab = interval_labs 
+		for interval_lab = interval_labs
 			[r.([interval_lab{:},'_',chan_lab{:},'_',freq_lab{:}])] = nans{:};
 		end
 	end
@@ -51,7 +51,7 @@ end
 %% not parfor compatible
 for subj_i = 1:length(subjs_to_include)
 	subj_id = subjs_to_include{subj_i};
-	subj_set = [subj_id,'_eeg_',num2str(srate),'_clust.set'];
+	subj_set = [subj_id,'_eeg_',num2str(srate),'_lap_clust.set'];
 	
 	%% correct data collection issues
 	% the problem is there are some trials in the
@@ -61,7 +61,7 @@ for subj_i = 1:length(subjs_to_include)
 	n_eeg_trials = length(end_event_latencies);
 	eeg_trial_strs = str2num(end_event_strings(:,1:4)); % ignore warning, use str2num
 	subj_inds = [r.subject] == str2double(subj_id);
-
+	
 	eeg_to_snap_inds = 1:length(eeg_trial_strs);
 	if strcmp(subj_id, '580') % subj 580 missing first 10 trials
 		eeg_to_snap_inds = 10+(1:n_eeg_trials);
@@ -85,15 +85,16 @@ for subj_i = 1:length(subjs_to_include)
 	eeg_to_snap_inds = eeg_to_snap_inds + find([r.subject]==str2double(subj_id),1) - 1;
 	
 	%% filter for filter-Hilbert method
-	% theta
 	EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
+	
+	% theta
 	EEG_theta = EEG;
 	nyq = EEG_theta.srate/2;
 	w0 = (5.5/nyq);
 	hw = 2.5/nyq;
 	wp = [w0-hw w0+hw];
 	hzp = wp*nyq;
-	d = .1/nyq;
+	d = .2/nyq;
 	ws = [-d+wp(1) d+wp(2)];
 	hzs = ws*nyq;
 	rp = .01;
@@ -107,7 +108,7 @@ for subj_i = 1:length(subjs_to_include)
 	x = flip(sosfilt(sos,flip(x)));
 	xx = reshape(x',size(EEG_theta.data));
 	EEG_theta.data = xx;
-	
+
 	% alpha
 	EEG_alpha = EEG;
 	nyq = EEG_theta.srate/2;
@@ -115,7 +116,7 @@ for subj_i = 1:length(subjs_to_include)
 	hw = 2/nyq;
 	wp = [w0-hw w0+hw];
 	hzp = wp*nyq;
-	d = .1/nyq;
+	d = .2/nyq;
 	ws = [-d+wp(1) d+wp(2)];
 	hzs = ws*nyq;
 	rp = .01;
@@ -133,11 +134,11 @@ for subj_i = 1:length(subjs_to_include)
 	% gamma
 	EEG_gamma = EEG;
 	nyq = EEG_gamma.srate/2;
-	w0 = (142.5/nyq);
-	hw = 112.5/nyq;
+	w0 = (142/nyq);
+	hw = 112/nyq;
 	wp = [w0-hw w0+hw];
 	hzp = wp*nyq;
-	d = .75/nyq;
+	d = 1/nyq;
 	ws = [-d+wp(1) d+wp(2)];
 	hzs = ws*nyq;
 	rp = .01;
@@ -152,12 +153,25 @@ for subj_i = 1:length(subjs_to_include)
 	xx = reshape(x',size(EEG_gamma.data));
 	EEG_gamma.data = xx;
 	
-	% old FIR filters
-	% 	EEG_theta = pop_eegfiltnew(EEG, 'locutoff', 3, 'hicutoff', 8);
-	% 	EEG_alpha = pop_eegfiltnew(EEG, , 'locutoff', 8, 'hicutoff', 12);
-	% 	EEG_gamma = pop_eegfiltnew(EEG, 'locutoff', 30);
-	
 	%% get this subjs trial-level amplitudes and timings
+	plot_EEGs = {EEG, EEG_theta, EEG_alpha, EEG_gamma};
+	for plot_i = 1:length(plot_EEGs)
+			EEG = plot_EEGs{plot_i};
+			
+			% trim and plot to verify filters
+			plot_EEG = EEG;
+			plot_EEG.data = [];
+			for event_i = 1:length(start_event_latencies)
+				epoch = EEG.data(:,start_event_latencies(event_i):end_event_latencies(event_i)-384); % 384 to correct for motion artifacts
+				plot_EEG.data = [plot_EEG.data,epoch-mean(epoch,2)];
+			end
+			figure('Visible', 'off'); pwelch(plot_EEG.data(:,:)',5000,20,[],512,'onesided');
+			ylim([-40 60]);
+			title(subj_id);
+			saveas(gcf,['Post-ICA_Trimmed_', subj_id, '_', num2str(plot_i),'.jpg']);
+			close
+	end
+	
 	EEGs = {EEG_theta, EEG_alpha, EEG_gamma};
 	% at desired chans and freqs
 	for chan_lab_i = 1:length(chan_labs)
@@ -220,4 +234,4 @@ for subj_i = 1:length(subjs_to_include)
 		end
 	end
 end
-save('ic_r.mat','r')
+save('lap_ic_r.mat','r')

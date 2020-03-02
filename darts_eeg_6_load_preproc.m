@@ -11,16 +11,16 @@ data_dir = [script_dir,'data/'];
 addpath(data_dir)
 
 subjs_to_include = {
-		'571'
-		'579'
-		'580'
-% 	'607'
-% 	'608'
-% 	'616'
-% 	'619'
-% 	'621'
-% 	'627'
-% 	'631'
+	'571'
+	'579'
+	'580'
+	'607'
+	'608'
+	'616'
+	'619'
+	'621'
+	'627'
+	'631'
 	};
 srate = 512;
 
@@ -121,6 +121,11 @@ parfor subj_i = 1:length(subjs_to_include)
 	Z = [EEG.chanlocs.Z];
 	EEG.data = laplacian_perrinX(EEG.data,X,Y,Z);
 	
+	% save channel data
+	EEG.setname = [old_setname,'_lap'];
+	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
+	pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
+	
 	%% reduce to clusters
 	chan_clusts = {...
 		{'C11','C12','C6','C10', 'C15', 'C16','C17'},...% front middle
@@ -131,7 +136,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	oldEEG = EEG;
 	newEEG = eeg_emptyset();
 	newEEG.times  = oldEEG.times;
-	newEEG.srate  = srate; % Rounded actual sampling rate. Note that the unit of the time must be in second.
+	newEEG.srate  = srate; 
 	newEEG.nbchan = length(chan_clusts);
 	newEEG.pnts   = size(oldEEG.data,2);
 	newEEG.etc = oldEEG.etc;

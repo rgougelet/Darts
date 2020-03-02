@@ -5,7 +5,7 @@ cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
-eeglab nogui;
+eeglab; close;
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
 
@@ -66,26 +66,32 @@ parfor subj_i = 1:length(subjs_to_include)
 	% linked-mastoid reref
 	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','on');
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref';
+	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
+	title(subj_id);
+	saveas(gcf,['Prefilter_' subj_id '.jpg']);
 	
 	% highpass filter the data
 	nyq = EEG.srate/2;
 	wp = (1/nyq);
-	d = .25/nyq;
+	d = .1/nyq;
 	ws = -d+wp;
-	rp = 1;
-	rs = 100;
+	rp = .01;
+	rs = 6;
 	[n,wn] = buttord(wp,ws,rp,rs);
 	[A,B,C,D] = butter(n,wn, 'high');
 	sos = ss2sos(A,B,C,D);
 	[h,f] = freqz(sos, EEG.srate*100, EEG.srate );
-	[~,i] = min(abs(mag2db(abs(h))+6))
+	[~,i] = min(abs(mag2db(abs(h))+6));
 	f(i) % -6dB cutoff
-% 	figure;	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]);
-% 	mean(abs(mag2db(abs(h(f>=1)))))
+	mean(abs(mag2db(abs(h(f>=1))))) % pb ripple
+% 	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]);
 	x = EEG.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
 	EEG.data = reshape(x',size(EEG.data));
+	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
+	title(subj_id);
+	saveas(gcf,['Highpass_' subj_id '.jpg']);
 
 	EEG.etc.pipeline{end+1} = ...
 			['Butterworth SOS HP: ', ...
@@ -102,10 +108,10 @@ parfor subj_i = 1:length(subjs_to_include)
 		w0 = (harm/nyq);
 		hw = .25/nyq;
 		wp = [w0-hw w0+hw];
-		d = .1/nyq;
+		d = .02/nyq;
 		ws = [wp(1)+d wp(2)-d];
-		rp = 1;
-		rs = 100;
+		rp = .01;
+		rs = 6;
 		[n,wn] = buttord(wp,ws,rp,rs);
 		[A,B,C,D] = butter(n,wn, 'stop');
 		sos = ss2sos(A,B,C,D);
@@ -127,7 +133,10 @@ parfor subj_i = 1:length(subjs_to_include)
 			', ', num2str(rs), ...
 			', ', num2str(n)];
 	end
-	
+	figure; pwelch(EEG.data(:,:)',5000,20,[],512,'onesided');
+	title(subj_id);
+	saveas(gcf,['Notches_' subj_id '.jpg']);
+
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
 		EEG = pop_resample( EEG, new_srate, 0.8, 0.4);

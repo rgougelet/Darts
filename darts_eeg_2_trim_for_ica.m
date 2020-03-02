@@ -47,13 +47,17 @@ parfor subj_i = 1:length(subjs_to_include)
 		epoch = old_EEG.data(:,in.start_event_latencies(event_i):in.end_event_latencies(event_i)-384); % 384 to correct for motion artifacts
 		new_EEG.data = [new_EEG.data,epoch-mean(epoch,2)];
 	end
-	EEG = new_EEG;	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];
-
+	EEG = new_EEG;	
 	EEG.pnts = length(new_EEG.data);
 	EEG.event = [];
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'Non-trial data removed';
-
+	
+	% plot to verify filters/noise
+	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
+	title(subj_id);
+	saveas(gcf,['Pre-ICA_Trimmed_' subj_id '.jpg']);
+	
 	% separate into chunks for easier noise removal
 	chnk_length_in_secs = .25;
 	chnk_length_in_samps = EEG.srate*chnk_length_in_secs;
