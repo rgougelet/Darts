@@ -2,6 +2,7 @@
 *.fdt
 *.asv
 *.mat
+*.jpg
 *.m~
 data/
 eeglab/
