@@ -45,8 +45,8 @@ for chan_lab = chan_labs
 		end
 	end
 end
-[r.throwtime] = nans{:};
-[r.delaytime] = nans{:};
+[r.eeg_throwtime] = nans{:};
+[r.eeg_delaytime] = nans{:};
 
 %% not parfor compatible
 for subj_i = 1:length(subjs_to_include)
@@ -67,7 +67,7 @@ for subj_i = 1:length(subjs_to_include)
 		eeg_to_snap_inds = 10+(1:n_eeg_trials);
 	end
 	% account for these subjects w/ missing trials
-	snap_trial_strs = str2num([...
+	snap_trial_strs = str2num([... % ignore warning, use str2num
 		num2str([r(subj_inds).delay]'),...
 		num2str([r(subj_inds).position]','%02d'),...
 		num2str([r(subj_inds).pres]')]);
@@ -186,29 +186,29 @@ for subj_i = 1:length(subjs_to_include)
 			% init
 			delay_trial_amps = [];
 			pre_throw_trial_amps = [];
-			trial_throwtime = [];
-			trial_delaytime = [];
-			
+			trial_eeg_throwtime = [];
+			trial_eeg_delaytime = [];
+			offset_in_samples = 384; % cut off end of trial to account for throw artifacts
 			for eeg_trial_i = 1:n_eeg_trials
 				start_latency_i = start_event_latencies(eeg_trial_i); % "latency" means sample index
 				cue_latency_i = cue_event_latencies(eeg_trial_i);
-				end_latency_i = end_event_latencies(eeg_trial_i)-384; % account for throw artifacts
+				end_latency_i = end_event_latencies(eeg_trial_i);
 				
 				% timings, runs reduntantly for each chan/freq
-				trial_throwtime(end+1) = (end_latency_i-cue_latency_i)/srate;
-				trial_delaytime(end+1) = (cue_latency_i-start_latency_i)/srate;
+				trial_eeg_throwtime(end+1) = (end_latency_i-cue_latency_i)/srate; % time from target onset to cue onset
+				trial_eeg_delaytime(end+1) = (cue_latency_i-start_latency_i)/srate; % time from cue onset to dart release
 				
 				% average amplitude during delay period
-				delay_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i;
+				delay_baseline_inds = round(start_latency_i-0.2*srate):start_latency_i; % 200 ms baseline
 				delay_baseline_amp = mean(EEG.data(chan_lab_i,delay_baseline_inds),2);
-				delay_inds = start_latency_i:cue_latency_i;
+				delay_inds = start_latency_i:cue_latency_i; % target onset to throw cue onset
 				delay_trial_amp = mean(EEG.data(chan_lab_i,delay_inds),2);
 				delay_trial_amps(end+1) = delay_trial_amp-delay_baseline_amp;
 				
 				% average amplitude during pre-throw period
-				pre_throw_baseline_inds = round(cue_latency_i-0.2*srate):cue_latency_i;
+				pre_throw_baseline_inds = round(cue_latency_i-0.2*srate):cue_latency_i; % 200 ms baseline
 				pre_throw_baseline_amp = mean(EEG.data(chan_lab_i,pre_throw_baseline_inds),2);
-				pre_throw_inds = cue_latency_i:end_latency_i;
+				pre_throw_inds = cue_latency_i:end_latency_i-offset_in_samples; % throw cue onset to dart release minus offset
 				pre_throw_trial_amp = mean(EEG.data(chan_lab_i,pre_throw_inds),2);
 				pre_throw_trial_amps(end+1) = pre_throw_trial_amp-pre_throw_baseline_amp;
 			end
@@ -216,20 +216,20 @@ for subj_i = 1:length(subjs_to_include)
 			% assign amplitudes to matching variable col and trial row
 			delay_amps = {r.(['delay_',chan_lab,'_',freq_lab])}; % get whole columns from all subjects
 			pre_throw_amps = {r.(['pre_throw_',chan_lab,'_',freq_lab])};
-			throwtime = {r.throwtime};
-			delaytime = {r.delaytime};
+			eeg_throwtime = {r.eeg_throwtime};
+			eeg_delaytime = {r.eeg_delaytime};
 			for trial_amp_i = 1:n_eeg_trials % add in subject specific trials
 				delay_amps{eeg_to_snap_inds(trial_amp_i)} = delay_trial_amps(trial_amp_i);
 				pre_throw_amps{eeg_to_snap_inds(trial_amp_i)} = pre_throw_trial_amps(trial_amp_i);
-				throwtime{eeg_to_snap_inds(trial_amp_i)} = trial_throwtime(trial_amp_i);
-				delaytime{eeg_to_snap_inds(trial_amp_i)} = trial_delaytime(trial_amp_i);
+				eeg_throwtime{eeg_to_snap_inds(trial_amp_i)} = trial_eeg_throwtime(trial_amp_i);
+				eeg_delaytime{eeg_to_snap_inds(trial_amp_i)} = trial_eeg_delaytime(trial_amp_i);
 			end
 			
 			% update whole columns with added subject's data
 			[r.(['delay_',chan_lab,'_',freq_lab])] = delay_amps{:};
 			[r.(['pre_throw_',chan_lab,'_',freq_lab])] = pre_throw_amps{:};
-			[r.throwtime] = throwtime{:};
-			[r.delaytime] = delaytime{:};
+			[r.eeg_throwtime] = eeg_throwtime{:};
+			[r.eeg_delaytime] = eeg_delaytime{:};
 			
 		end
 	end

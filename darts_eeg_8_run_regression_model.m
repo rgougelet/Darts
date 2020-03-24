@@ -17,11 +17,171 @@ subjs_to_include = {
 	} ;
 srate = 512 ;
 load_r = load('lap_ic_r.mat') ;
+r = load_r.r;
+mperm_corr = memoize(@perm_corr);
+
+%% data transformations
+% convert subject ids to numbers
+for subj_i = 1:length(subjs_to_include)
+	for row_i = 1:length(load_r.r)
+		if load_r.r(row_i).subject == str2num(subjs_to_include{subj_i}); load_r.r(row_i).subject = subj_i; end
+	end
+end
+
+% rename variables
+r = struct2table(load_r.r);
+% r.throwtime = r.eeg_throwtime;
+r.eeg_throwtime = [];
+r.delaytime = r.eeg_delaytime;
+% r.delaytime = r.delaystilltime;
+r.eeg_delaytime = [];
+r.delaystilltime = [];
+load_r.r = table2struct(r);
+
+% remove outliers
+r = struct2table(load_r.r);
+r(any(isnan(r.Variables),2),:) = [] ; % remove all nans
+r.distance(r.distance == 0,:) = .025;
+r(r.throwtime > 3,:) = [] ;
+load_r.r = table2struct(r);
+
+% squareroot distance and throwtime
+r = struct2table(load_r.r);
+r.distance = r.distance*6.55; % convert to real-life distance
+r.distance = sqrt(r.distance);
+r.throwtime = sqrt(r.throwtime);
+load_r.r = table2struct(r);
+
+%% behavioral statistics
+clc; close all;
+figure('Position', [0 0 1024 786]*2); h1 =	tight_subplot(1,2,.04,.1);
+figure('Position', [0 0 1024 786]*2); h2 =	tight_subplot(1,2,.04,.1);
+
+% plot distance by subject and condition
+for mem = 0:1
+	r = struct2table(load_r.r) ;
+	r(r.pres==mem,:)=[]; % get only this condition
+	
+	for subj_i = 1:10
+		vd{subj_i} = r.distance(r.subject==subj_i);
+		vt{subj_i} = r.throwtime(r.subject==subj_i);
+	end
+	
+	% plot distance
+	figure(1)
+	axes(h1(mem+1))
+	violin(vd, 'facecolor','w', 'mc','','medc','');
+	boxplot(r.distance, r.subject, 'widths',0.25); hold on;
+	suptitle('Dart''s Distance from Bull''s-Eye by Subject')
+	xlabel('Subject')
+	ylabel('Distance (sqrt(cm))')
+	set(gca,'FontSize',12)
+	if mem == 1; title('Target Absent'); end
+	if mem == 0; title('Target Present'); end
+	ylim([0, 8])
+	
+	% plot throwtime
+	figure(2)
+	axes(h2(mem+1))
+	violin(vt, 'facecolor','w', 'mc','','medc','');
+	boxplot(r.throwtime, r.subject, 'widths',0.25); hold on;
+	suptitle('Time taken to throw by Subject')
+	xlabel('Subject')
+	ylabel('Throw time (sqrt(seconds))')
+	set(gca,'FontSize',12)
+	if mem == 1; title('Target Absent'); end
+	if mem == 0; title('Target Present'); end
+	ylim([0, 3.5])
+end
+
+%% distance vs delay
+clc; fig = figure(3); clf;
+set(fig, 'Position', [0 0 1024 786]*2);
+
+for mem = 0:1
+	r = struct2table(load_r.r) ;
+	r(r.pres==mem,:)=[];
+	
+	% single trial correlation
+	subplot(2,1,mem+1);
+	if mem == 1; disp('Target Absent');  title('Target Absent'); end; hold on;
+	if mem == 0; disp('Target Present'); title('Target Present'); end; hold on;
+	disp('Single Trial')
+	[rho, p] = mperm_corr(r.delaytime,r.distance);
+	[rho, p] 
+	
+	% single trial plot
+	plot(r.delaytime, r.distance,'.'); hold on;
+	xlim([3, 10.5])
+	ylim([0.75, 7])
+	
+	% summary statistic correlation
+	subplot(2,1,mem+1);
+	for subj_i = 1:length(subjs_to_include)
+		subj_is = r.subject==subj_i;
+		mean_delaytime = mean(r.delaytime(subj_is));
+		mean_distance = mean(r.distance(subj_is));
+		means(subj_i,:) = [mean_delaytime, mean_distance];
+	end
+	disp('Summary Statistics')
+	[rho, p] =mperm_corr(means(:,1),means(:,2));
+	[rho, p]
+	
+	% summary statistic 
+	plot(means(:,1),means(:,2),'r*')
+	xlim([3, 10.5])
+	ylim([0.75, 7])
+	
+	% set axes and least squares line
+	xlabel('Delay-time (seconds)')
+	ylabel('Distance (sqrt(cm))')
+	lsline;
+	set(gca,'FontSize',11)
+end
+
+%% distance vs throwtime
+clc; fig = figure(4); clf;
+set(fig, 'Position', [0 0 1024 786]*2);
+
+for mem = 0:1
+	r = struct2table(load_r.r) ;
+	r(r.pres==mem,:)=[];
+	
+	% single trial plot and correlation
+	subplot(2,1,mem+1);
+	if mem == 1; disp('Target Absent');  title('Target Absent'); end; hold on;
+	if mem == 0; disp('Target Present'); title('Target Present'); end; hold on;
+	plot(r.distance, r.throwtime,'.'); hold on;
+	ylabel('Distance (sqrt(cm))')
+	xlabel('Throw-time (sqrt(seconds))')
+	disp('Single Trial')
+	[rho, p] = mperm_corr(r.throwtime,r.distance);
+	[rho, p] 
+	
+	% summary statistic plot and correlation
+	subplot(2,1,mem+1);
+	for subj_i = 1:length(subjs_to_include)
+		subj_is = r.subject==subj_i;
+		mean_throwtime = mean(r.throwtime(subj_is));
+		mean_distance = mean(r.distance(subj_is));
+		means(subj_i,:) = [mean_throwtime, mean_distance];
+	end
+	plot(means(:,1),means(:,2),'r*')
+	disp('Summary Statistics')
+	[rho, p] =mperm_corr(means(:,1),means(:,2));
+	[rho, p]
+
+	% set axes and least squares line
+	xlim([0.75, 2])
+	ylim([2, 4])
+	lsline;
+	set(gca,'FontSize',11)
+end
 
 %% make regression vars
 clc;
 r = struct2table(load_r.r) ;
-r(any(isnan(r.Variables),2),:) = [] ;
+r(any(isnan(r.Variables),2),:) = [] ; % remove all nans
 
 % % within-subject normalize distance
 % distance = r.distance.^(1/2) ;% sqrt(paper units)
@@ -86,7 +246,7 @@ for vc_i = 1:length(vcs)
 	[int_r.(['presx',v2n])]= v2{:} ;
 	[int2_r.(['presx',v1n])] = v1{:} ;
 	[int2_r.(['presx',v2n])]= v2{:} ;
- 	[int2_r.(['presx',v1n,'x',v2n])] = v12{:} ;
+	[int2_r.(['presx',v1n,'x',v2n])] = v12{:} ;
 end
 vars = {dvarnames{:}}' ;
 vcs = nchoosek(vars,2) ;
@@ -100,7 +260,7 @@ for vc_i = 1:length(vcs)
 	[int_r.(['presx',v2n])]= v2{:} ;
 	[int2_r.(['presx',v1n])] = v1{:} ;
 	[int2_r.(['presx',v2n])]= v2{:} ;
- 	[int2_r.(['presx',v1n,'x',v2n])] = v12{:} ;
+	[int2_r.(['presx',v1n,'x',v2n])] = v12{:} ;
 end
 int_r = struct2table(int_r) ;
 int2_r = struct2table(int2_r) ;
@@ -108,9 +268,7 @@ int2_r = struct2table(int2_r) ;
 %% get reference diagnostic measures for regression
 y = [r.distance]' ;
 ref = [sum((y-mean(y)).^2),...
-	sum((y-median(y)).^2),...
 	sum(abs(y-mean(y))),...
-	sum(abs(y-median(y)))...
 	]' ;
 ref_mean_press = 0 ;
 for i = 1:length(y)
@@ -133,26 +291,109 @@ end
 int = false ; % should be false with pres as a dummy variable
 % r = table2struct(int_r) ; % linear+int model
 % r = table2struct(int2_r) ; % linear+second order int model
-tab_r = lin_r;
-% r = table2struct(lin_r) ; % linear model
-% y = [r.distance]' ;
-% X = r ;
-% fields = fieldnames(X) ;
-% X = rmfield(X,'distance') ;
-% X = cell2mat(struct2cell(X))' ;
 
-%% mixed effects
+
+%% linear mixed effects
+tab_r = lin_r;
+tab_r.pres = logical(double(tab_r.pres))
+
+% tab_r.abs = ~logical(double(tab_r.pres))
 % mdl = fitlmematrix(X,y,'VarNames',fields, 'ResponseVar','distance', 'intercept', int) ;
-mdl = fitlme(tab_r, 'distance ~ 1+pres + delay_Front_theta+(delay_Front_theta|subject)', 'FitMethod', 'REML')
-mdl.Rsquared.Adjusted
+% form = {
+% 	'distance ~ 1 +'
+% 	'pres*delay_Front_theta +'
+% 	'pres*pre_throw_Front_theta +'
+% 	'pres*delay_Front_alpha +'
+% 	'pres*pre_throw_Front_alpha +'
+% 	'pres*delay_Back_theta +'
+% 	'pres*pre_throw_Back_theta +'
+% 	'pres*delay_Back_alpha +'
+% 	'pres*pre_throw_Back_alpha +'
+% 	'(pres*delay_Front_theta|subject) +'
+% 	'(pres*pre_throw_Front_theta|subject)  +'
+% 	'(pres*delay_Front_alpha|subject)  +'
+% 	'(pres*pre_throw_Front_alpha|subject)  +'
+% 	'(pres*delay_Back_theta|subject)  +'
+% 	'(pres*pre_throw_Back_theta|subject)  +'
+% 	'(pres*delay_Back_alpha|subject)  +'
+% 	'(pres*pre_throw_Back_alpha|subject)'
+% 	};
+% form = {
+% 	'distance ~ '
+% 	'pres*delay_Front_theta +'
+% 	'pres*pre_throw_Front_theta +'
+% 	'pres*delay_Front_alpha +'
+% 	'pres*pre_throw_Front_alpha +'
+% 	'pres*delay_Back_theta +'
+% 	'pres*pre_throw_Back_theta +'
+% 	'pres*delay_Back_alpha +'
+% 	'pres*pre_throw_Back_alpha +'
+% 	'(1+pres|subject)'
+% 	};
+% form = {
+% 	'distance ~ '
+% 	'pres*delay_Front_theta +'
+% 	'pres*pre_throw_Front_theta +'
+% 	'pres*delay_Back_alpha +'
+% 	'pres*pre_throw_Back_alpha +'
+% 	'(1+pres|subject)'
+% 	};
+form = {
+	'delay_Front_theta ~'
+	'pres'
+	};
+mdl = fitlme(tab_r, ...
+	[form{:}], ...
+	'FitMethod', 'REML',...
+	'DummyVarCoding','full',...
+	'StartMethod','random');
+[[sum((mdl.Residuals.Raw).^2),...
+	sum(abs(mdl.Residuals.Raw))]',ref]
+mdl
+
+%%
+clear
+ds = dataset();
+% ds.y = rand(100,1);
+res = randn(100,1);
+ds.X = ones(100,1)+res;
+ds.A = randi([0 1],100,1);
+eps = randn(100,1);
+b = .2*randn(100,1);
+ds.y = 2.*ds.X + .3.*eps.*ds.A+ .7.*eps.*~ds.A;
+fitlme(ds,'y~X+(X|A)')
+%% some random data.
+ds.y = rand(8,1);
+ds.A = [true;true;true;true;false;false;false;false];
+ds.B = rand(8,1);
+ds.C = categorical([true;true;true;true;false;false;false;false]);
+lme = fitlme(ds,'y ~ 1 + B + C')
+
+%%
+tab_r = lin_r;
+y = tab_r.delay_Front_theta;
+X = [double(tab_r.pres)];
+Z = [ones(height(tab_r),1)];
+G = tab_r.subject;
+mdl = fitlmematrix(X,y,Z, G)
 %% non-robust
+%%
+tab_r = lin_r;
+tab_r.subject = [];
+tab_r.pres = double(tab_r.pres);
+r = table2struct(tab_r) ; % linear model
+y = [r.distance]' ;
+X = r ;
+fields = fieldnames(X) ;
+X = rmfield(X,'distance') ;
+X = cell2mat(struct2cell(X))' ;
 mdl = fitlm(X,y,'VarNames',fields, 'ResponseVar','distance', 'intercept', int) ;
-[sum((mdl.Residuals.Raw).^2)<ref,...
-	sum(abs(mdl.Residuals.Raw))<ref]'
+[[sum((mdl.Residuals.Raw).^2),...
+	sum(abs(mdl.Residuals.Raw))]',ref]
 ref_mean_press
 press_var = press([X,y])
-
-% non-robust bootstrap
+mdl
+%% non-robust bootstrap
 mdl = fitlm(X,y,'VarNames',fields, 'ResponseVar','distance', 'intercept', int) ;
 bhs = runboot(X,y,mdl.Residuals.Raw,100000) ;
 quantile(bhs,[0.05, .95]) ;
@@ -169,7 +410,7 @@ mdl = fitlm(X,y,'VarNames',fields, 'RobustOpts','on', 'ResponseVar','distance', 
 press_var = 0 ;
 for i = 1:length(y)
 	if mod(i,100) == 0
-		disp([num2str(100*(i/length(y))),'% done']) ;	
+		disp([num2str(100*(i/length(y))),'% done']) ;
 	end
 	ind = true(size(y)) ;
 	ind(i) = false ;

@@ -26,7 +26,7 @@ srate = 512;
 
 % find trial start and end times
 % parfor compatible
-parfor subj_i = 1:length(subjs_to_include)
+for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
@@ -44,7 +44,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	cue_event_latencies = [];
 	cue_event_strings = [];
 	
-	% for every event
+	% for every event marker
 	for event_ind = 1:length(EEG.event)
 		
 		% get event type string
@@ -53,7 +53,7 @@ parfor subj_i = 1:length(subjs_to_include)
 			continue
 		end
 		
-		% find type strings that match dart release flag 012 and store
+		% dart release
 		if strcmp(event_type(end-2:end),'012')
 			end_event_inds(end+1) = event_ind;
 			end_event_strings = [end_event_strings; event_type];
@@ -61,9 +61,29 @@ parfor subj_i = 1:length(subjs_to_include)
 		end
 	end
 	
-	% find prior start trial and cue onset events for every dart release event
+	delaywin_inds = [];
+	delaywin_strings = [];
+	delaywin_latencies = [];
+	for event_ind = 1:length(EEG.event)
+		% get event type string
+		event_type = num2str(EEG.event(event_ind).type);
+		if length(event_type) ~= 7 % skip superfluous events
+			continue
+		end
+		
+		% dart release
+		if strcmp(event_type(end-2:end),'013')
+			error('has simulated data');
+% 			delaywin_inds(end+1,:) = event_ind;
+% 			delaywin_strings = [delaywin_strings; event_type];
+% 			delaywin_latencies(end+1,:) =  round(EEG.event(event_ind).latency);
+		end
+	end
+	
+	% find prior target display onset and throw cue onset events for every dart release event
 	for end_event_ind = end_event_inds
-		% trial start
+		
+		% target display onset
 		start_event_ind = end_event_ind;
 		while true
 			start_event_ind = start_event_ind-1;
@@ -71,7 +91,7 @@ parfor subj_i = 1:length(subjs_to_include)
 			if length(start_event_type) ~= 7
 				continue
 			end
-			if strcmp(start_event_type(end-2:end),'003')
+			if strcmp(start_event_type(end-2:end),'004') 
 				break
 			end
 		end
@@ -79,7 +99,7 @@ parfor subj_i = 1:length(subjs_to_include)
 		start_event_strings = [start_event_strings; start_event_type];
 		start_event_latencies(end+1) = round(EEG.event(start_event_ind).latency);
 		
-		% cue onset
+		% throw cue onset
 		cue_event_ind = end_event_ind;
 		while true
 			cue_event_ind = cue_event_ind-1;

@@ -13,19 +13,19 @@ addpath([script_dir,'deps/'])
 eeglab;
 
 subjs_to_include = {
-% 	'571'
-% 	'579'
+	'571'
+	'579'
 	'580'
 	'607'
-% 	'608'
-% 	'616'
-% 	'619'
-% 	'621'
-% 	'627'
-% 	'631'
+	'608'
+	'616'
+	'619'
+	'621'
+	'627'
+	'631'
 	};
 srate = 512;
-%% parfor compatibl
+%% parfor compatible
 parfor subj_i = 1:length(subjs_to_include)
 	eeglab nogui;
 
