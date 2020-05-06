@@ -1,11 +1,12 @@
 %% init
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts';
 cd(script_dir);
 addpath([script_dir,'eeglab/']);
 data_dir = [script_dir,'data/'];
 addpath(data_dir);
 eeglab; close;
+
 subjs_to_include = {
 	'571'
 	'579'

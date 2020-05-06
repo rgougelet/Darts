@@ -1,16 +1,12 @@
 clear; close all; clc;
-try
-	script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-	rmpath('/data/common/matlab/eeglab')
-catch
-	script_dir = 'G:/darts/';
-end
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
-data_dir = [script_dir,'data/'];
-addpath(data_dir)
+warning('off','MATLAB:rmpath:DirNotFound');
+rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
 addpath([script_dir,'deps/'])
-eeglab;
+data_dir = [script_dir,'data/'];
+addpath(data_dir)
 
 subjs_to_include = {
 	'571'
@@ -25,9 +21,10 @@ subjs_to_include = {
 	'631'
 	};
 srate = 512;
-%% parfor compatible
+%% use eog channels to remove eye blinks
+% parfor compatible
 parfor subj_i = 1:length(subjs_to_include)
-	eeglab nogui;
+	eeglab nogui; % each proc needs eeglab dependencies
 
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
@@ -45,22 +42,28 @@ parfor subj_i = 1:length(subjs_to_include)
 
 	% EEG.icaact = EEG.icaweights*EEG.data
 	% EEG.data = EEG.icawinv*EEG.icaact
-	X2 = [veog;heog];
-	X4 = [EEG.data(uveog_i,:); EEG.data(lveog_i,:);EEG.data(lheog_i,:);EEG.data(rheog_i,:)]; % works best
+	Y2 = [veog;heog]; % two bipolar channels
+	Y4 = [EEG.data(uveog_i,:); ...
+		EEG.data(lveog_i,:);...
+		EEG.data(lheog_i,:);...
+		EEG.data(rheog_i,:)]; % four unipolar channels, works best
 	
+	% normalize eeg data
 	X = EEG.icaact(:,:);
 	mx = mean(X,2);	sdx = std(X,[],2);
-	X = (X-mx)./sdx; % normalize
+	X = (X-mx)./sdx; 
 	
-	Y = X4;
+	% normalize eog data
+	Y = Y4; % use four unipolar here
 	my = mean(Y,2);	sdy = std(Y,[],2);
 	Y = (Y-my)./sdy;
 	
+	% regression
 	B = Y*pinv(X);
 	B_inv = pinv(B);
 	X_hat = B_inv*Y; % back project from eog
 	
-	new_icaact= sdx.*(X-X_hat)+mx; %denormalize
+	new_icaact= sdx.*(X-X_hat)+mx; % denormalize
 % 	eegplot(new_icaact, 'dispchans',32,'winlength',10, 'spacing', 30)
 % 	eegplot(EEG.icaact(:,:), 'dispchans',32,'winlength',10, 'spacing', 30)
 
@@ -71,13 +74,13 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.icaact = reshape(new_icaact,size(EEG.icaact));
 	EEG.data = reshape(new_data, size(EEG.data));
 
-	EEG.etc.pipeline{end+1} = 'ICs reweighted';
+	EEG.etc.pipeline{end+1} = 'ICs reweighted and EOG rejected';
 	EEG.etc.eog.B_inv = B_inv;
 	EEG.etc.eog.sdx = sdx;
 	EEG.etc.eog.mx = mx;
 	parsave([data_dir, subj_id,'_eog'],{B_inv, sdx,mx},{'B_inv', 'sdx','mx'});
 
-% 	% isolate oscillatory ICs (failed)
+% 	% isolate oscillatory ICs (does not work, hard to isolate)
 % 	[icx,f] = pwelch(diff(EEG.icaact(:,:)',1),EEG.srate*100,EEG.srate*50,[],EEG.srate,'onesided');
 % 	eegplot(diff(EEG.icaact(:,:),2));
 % 	plot(f,icx); xlim([0 50])
@@ -109,6 +112,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	dipfit = EEG.dipfit;
 	parsave([data_dir,subj_id,'_dipfit'],dipfit, 'dipfit');
 
+	% save
 	EEG.setname = [old_setname,'_ch'];
 	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 end

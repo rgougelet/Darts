@@ -1,8 +1,9 @@
 %% init
-clear ; close all ; clc ;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/' ;
-cd(script_dir) ;
-addpath([script_dir,'deps/']) ;
+clear; close all; clc;
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
+cd(script_dir);
+addpath([script_dir,'eeglab/']);
+addpath([script_dir,'deps/']);
 subjs_to_include = {
 	'571'
 	'579'
@@ -20,7 +21,6 @@ load_r = load('lap_ic_r.mat') ;
 r = load_r.r;
 mperm_corr = memoize(@perm_corr);
 
-%% data transformations
 % convert subject ids to numbers
 for subj_i = 1:length(subjs_to_include)
 	for row_i = 1:length(load_r.r)
@@ -30,114 +30,290 @@ end
 
 % rename variables
 r = struct2table(load_r.r);
-% r.throwtime = r.eeg_throwtime;
+r.throwtime = r.eeg_throwtime;
 r.eeg_throwtime = [];
 r.delaytime = r.eeg_delaytime;
-% r.delaytime = r.delaystilltime;
 r.eeg_delaytime = [];
 r.delaystilltime = [];
 load_r.r = table2struct(r);
 
-% remove outliers
+% remove nans
 r = struct2table(load_r.r);
 r(any(isnan(r.Variables),2),:) = [] ; % remove all nans
-r.distance(r.distance == 0,:) = .025;
-r(r.throwtime > 3,:) = [] ;
-load_r.r = table2struct(r);
-
-% squareroot distance and throwtime
-r = struct2table(load_r.r);
 r.distance = r.distance*6.55; % convert to real-life distance
-r.distance = sqrt(r.distance);
-r.throwtime = sqrt(r.throwtime);
 load_r.r = table2struct(r);
 
-%% behavioral statistics
+%% plot distance X subject X condition
 clc; close all;
-figure('Position', [0 0 1024 786]*2); h1 =	tight_subplot(1,2,.04,.1);
-figure('Position', [0 0 1024 786]*2); h2 =	tight_subplot(1,2,.04,.1);
+fig = figure('Position', [0 0 1366 786], 'Visible', 'off'); 
+h =	tight_subplot(1,2,.045,.08);
+t = annotation('textbox',[.5,.98,0,0],...
+	'string','Dart''s Distance from Bull''s-Eye by Subject x Condition',...
+	'FitBoxToText','on',...
+	'LineStyle','none',...
+	'HorizontalAlignment','center',...
+	'FontSize',14);
 
-% plot distance by subject and condition
-for mem = 0:1
-	r = struct2table(load_r.r) ;
-	r(r.pres==mem,:)=[]; % get only this condition
-	
-	for subj_i = 1:10
-		vd{subj_i} = r.distance(r.subject==subj_i);
-		vt{subj_i} = r.throwtime(r.subject==subj_i);
-	end
-	
-	% plot distance
-	figure(1)
-	axes(h1(mem+1))
-	violin(vd, 'facecolor','w', 'mc','','medc','');
-	boxplot(r.distance, r.subject, 'widths',0.25); hold on;
-	suptitle('Dart''s Distance from Bull''s-Eye by Subject')
-	xlabel('Subject')
-	ylabel('Distance (sqrt(cm))')
-	set(gca,'FontSize',12)
-	if mem == 1; title('Target Absent'); end
-	if mem == 0; title('Target Present'); end
-	ylim([0, 8])
-	
-	% plot throwtime
-	figure(2)
-	axes(h2(mem+1))
-	violin(vt, 'facecolor','w', 'mc','','medc','');
-	boxplot(r.throwtime, r.subject, 'widths',0.25); hold on;
-	suptitle('Time taken to throw by Subject')
-	xlabel('Subject')
-	ylabel('Throw time (sqrt(seconds))')
-	set(gca,'FontSize',12)
-	if mem == 1; title('Target Absent'); end
-	if mem == 0; title('Target Present'); end
-	ylim([0, 3.5])
+% plot target absent
+set(gcf,'CurrentAxes',h(1));
+r = struct2table(load_r.r) ;
+r(r.pres==1,:)=[]; % remove target present trials
+for subj_i = 1:10
+	v{subj_i} = r.distance(r.subject==subj_i);
 end
+violin(v, 'facecolor','b','facealpha',0.25, 'mc','k','medc','','edgecolor',[]);
+boxplot(r.distance, r.subject, 'widths',0.15, 'colors','k', 'Symbol','+','OutlierSize',3); hold on;
+title('Target Absent'); set(gca,'FontSize',12);
+xlabel('Subject'); ylabel('Distance (cm)'); ylim([-1, 40]);
+set(findobj(gca,'type','line'),'linew',.75)
 
-%% distance vs delay
+% plot target present
+set(gcf,'CurrentAxes',h(2));
+r = struct2table(load_r.r) ;
+r(r.pres==0,:)=[]; % remove target absent trials
+for subj_i = 1:10
+	v{subj_i} = r.distance(r.subject==subj_i);
+end
+violin(v, 'facecolor','r','facealpha',0.25, 'mc','k','medc','','edgecolor',[]);
+boxplot(r.distance, r.subject, 'widths',0.15, 'colors','k', 'Symbol','+','OutlierSize',3); hold on;
+title('Target Present'); set(gca,'FontSize',12);
+xlabel('Subject'); ylabel('Distance (cm)'); ylim([-1, 40]);
+set(findobj(gca,'type','line'),'linew',.75)
+
+tic; print(fig,t.String,'-dsvg','-r300'); toc;
+
+%% plot throwtime X subject X condition
+clc; close all;
+fig = figure('Position', [0 0 1366 786], 'Visible', 'off'); 
+h =	tight_subplot(1,2,.045,.1);
+t = annotation('textbox',[.5,.98,0,0],...
+	'string','Time Taken to Throw by Subject x Condition',...
+	'FitBoxToText','on',...
+	'LineStyle','none',...
+	'HorizontalAlignment','center',...
+	'FontSize',14);
+
+% plot target absent
+set(gcf,'CurrentAxes',h(1));
+r = struct2table(load_r.r) ;
+r(r.pres==1,:)=[]; % remove target present trials
+for subj_i = 1:10
+	v{subj_i} = r.throwtime(r.subject==subj_i);
+end
+violin(v, 'facecolor','b','facealpha',0.25, 'mc','k','medc','','edgecolor',[]);
+boxplot(r.throwtime, r.subject, 'widths',0.15, 'colors','k', 'Symbol','+','OutlierSize',3); hold on;
+title('Target Absent'); set(gca,'FontSize',12);
+xlabel('Subject'); ylabel('Throw time (seconds)'); ylim([0.8, 3.5]);
+set(findobj(gca,'type','line'),'linew',.75)
+
+% plot target present
+set(gcf,'CurrentAxes',h(2));
+r = struct2table(load_r.r) ;
+r(r.pres==0,:)=[]; % remove target absent trials
+for subj_i = 1:10
+	v{subj_i} = r.throwtime(r.subject==subj_i);
+end
+violin(v, 'facecolor','r','facealpha',0.25, 'mc','k','medc','','edgecolor',[]);
+boxplot(r.throwtime, r.subject, 'widths',0.15, 'colors','k', 'Symbol','+','OutlierSize',3); hold on;
+title('Target Present'); set(gca,'FontSize',12);
+xlabel('Subject'); ylabel('Throw time (seconds)'); ylim([0.8, 3.5]);
+set(findobj(gca,'type','line'),'linew',.75)
+
+tic; print(fig,t.String,'-dsvg','-r300'); toc;
+
+%% plot single-trial distance X condition
+clc; close all;
+r = struct2table(load_r.r) ;
+fig = figure('Position', [0 0 1366 786], 'Visible', 'off'); 
+h1 = histogram(r.distance(~~r.pres,:), 'BinEdges',1:1:49, 'FaceAlpha',0.15); hold on;
+h2 = histogram(r.distance(~r.pres,:), 'BinEdges',1:1:49, 'FaceAlpha',0.15);
+h1v = h1.Values;
+h2v = h2.Values; clf;
+bar(2:1:49,[h1v;h2v]', 1,'stacked', 'FaceAlpha',0.15);
+ylabel('Trials');
+xlabel('Distance (sqrt(cm))');
+xline(mean(r.distance(~~r.pres,:)), 'LineWidth',2, 'Color','b');
+xline(mean(r.distance(~r.pres,:)), 'LineWidth',2, 'Color','r');
+set(gca,'FontSize',16);
+t = title('Dart''s Distance from Bull''s-Eye by Condition');
+legend({'Target Present','Target Absent', 'Target Present Mean', 'Target Absent Mean'});
+tic; print(fig,t.String,'-dsvg','-r300'); toc;
+
+%% plot single-trial throwtime X condition with subject means
+clc; close all;
+r = struct2table(load_r.r) ;
+figure('Position', [0 0 1024 786]);
+% figure('Position', [0 0 1024 786], 'Visible','off');
+h1 = histogram(r.throwtime(~~r.pres,:), 'BinEdges',0.9:.05:1.8, 'FaceAlpha',0.15); hold on;
+h2 = histogram(r.throwtime(~r.pres,:), 'BinEdges',0.9:.05:1.8, 'FaceAlpha',0.15);
+h1v = h1.Values;
+h2v = h2.Values; clf;
+bar(.95:.05:1.8,[h1v;h2v]', 1,'stacked', 'FaceAlpha',0.15);
+ylabel('Trials');
+xlabel('Throw time (sqrt(seconds))');
+xline(mean(r.throwtime(~~r.pres,:)), 'LineWidth',2, 'Color','b');
+xline(mean(r.throwtime(~r.pres,:)), 'LineWidth',2, 'Color','r');
+set(gca,'FontSize',16);
+t = title('Time Taken to Throw by Condition');
+legend({'Target Present','Target Absent', 'Target Present Mean', 'Target Absent Mean'});
+tic; print(fig,t.String,'-dsvg','-r300'); toc;
+
+%% distance vs condition statistics
+% single-trial
+r = struct2table(load_r.r) ;
+ta = r.distance(r.pres == 0);
+tp = r.distance(r.pres == 1);
+[h,p] = perm_ttest2(ta,tp,'nperm', 10000)
+
+% summary statistic
+abs_subj_means = []; pres_subj_means = [];
+for subj_i = 1:length(subjs_to_include)
+	abs_subj_means(end+1,:) = mean(r.distance(r.subject == subj_i & r.pres == 1));
+	pres_subj_means(end+1,:) = mean(r.distance(r.subject == subj_i & r.pres == 0));
+end
+[h,p] = perm_ttest2(abs_subj_means,pres_subj_means,'nperm', 10000)
+
+%% throwtime vs condition statistics
+% single-trial
+r = struct2table(load_r.r) ;
+ta = r.throwtime(r.pres == 0);
+tp = r.throwtime(r.pres == 1);
+[h,p] = perm_ttest2(ta,tp,'nperm', 10000)
+
+% summary statistic
+abs_subj_means = []; pres_subj_means = [];
+for subj_i = 1:length(subjs_to_include)
+	abs_subj_means(end+1,:) = mean(r.throwtime(r.subject == subj_i & r.pres == 1));
+	pres_subj_means(end+1,:) = mean(r.throwtime(r.subject == subj_i & r.pres == 0));
+end
+[h,p] = perm_ttest2(abs_subj_means,pres_subj_means,'nperm', 10000)
+
+%% plot single-trial distance vs delay by condition
 clc; fig = figure(3); clf;
 set(fig, 'Position', [0 0 1024 786]*2);
 
-for mem = 0:1
-	r = struct2table(load_r.r) ;
-	r(r.pres==mem,:)=[];
-	
-	% single trial correlation
-	subplot(2,1,mem+1);
-	if mem == 1; disp('Target Absent');  title('Target Absent'); end; hold on;
-	if mem == 0; disp('Target Present'); title('Target Present'); end; hold on;
-	disp('Single Trial')
-	[rho, p] = mperm_corr(r.delaytime,r.distance);
-	[rho, p] 
-	
-	% single trial plot
-	plot(r.delaytime, r.distance,'.'); hold on;
-	xlim([3, 10.5])
-	ylim([0.75, 7])
-	
-	% summary statistic correlation
-	subplot(2,1,mem+1);
-	for subj_i = 1:length(subjs_to_include)
-		subj_is = r.subject==subj_i;
-		mean_delaytime = mean(r.delaytime(subj_is));
-		mean_distance = mean(r.distance(subj_is));
-		means(subj_i,:) = [mean_delaytime, mean_distance];
+r = struct2table(load_r.r) ;
+abs_delay = r.delay(r.pres==0);
+pres_delay = r.delay(r.pres==1);
+abs_distance = r.distance(r.pres==0);
+pres_distance = r.distance(r.pres==1);
+
+% single-trial statistics
+disp('Single Trial')
+disp('Target Absent')
+[rho, p] = mperm_corr(abs_delay,abs_distance)
+disp('Target Present')
+[rho, p] = mperm_corr(pres_delay,pres_distance)
+
+% single trial plot
+subplot(2,1,1)
+plot(abs_delay, abs_distance,'.'); hold on;
+title('Target Absent');
+xlim([2.5, 9.5])
+ylim([0.75, 7])
+xlabel('Delay-time (seconds)')
+ylabel('Distance (sqrt(cm))')
+lsline;
+set(gca,'FontSize',11)
+
+subplot(2,1,2)
+plot(pres_delay, pres_distance,'.'); hold on;
+title('Target Present');
+xlim([2.5, 9.5])
+ylim([0.75, 7])
+xlabel('Delay-time (seconds)')
+ylabel('Distance (sqrt(cm))')
+lsline;
+set(gca,'FontSize',11)
+
+%% summary statistic correlation using subject means
+abs_subj_means = []; abs_subj_delays = [];
+pres_subj_means = []; pres_subj_delays = [];
+for subj_i = 1:length(subjs_to_include)
+	for delay = 3:9
+		abs_subj_delays(end+1,:) = delay;
+		abs_subj_means(end+1,:) = mean(r.distance(r.subject==subj_i & r.delay==delay & r.pres==0));
+		rm_abs_subj_means(subj_i,delay-2) = mean(r.distance(r.subject==subj_i & r.delay==delay & r.pres==0));
+		pres_subj_delays(end+1,:) = delay;
+		pres_subj_means(end+1,:) = mean(r.distance(r.subject==subj_i & r.delay==delay & r.pres==1));
+		rm_abs_subj_means(subj_i,delay-2) = mean(r.distance(r.subject==subj_i & r.delay==delay & r.pres==0));
 	end
-	disp('Summary Statistics')
-	[rho, p] =mperm_corr(means(:,1),means(:,2));
-	[rho, p]
-	
-	% summary statistic 
-	plot(means(:,1),means(:,2),'r*')
-	xlim([3, 10.5])
-	ylim([0.75, 7])
-	
-	% set axes and least squares line
-	xlabel('Delay-time (seconds)')
-	ylabel('Distance (sqrt(cm))')
-	lsline;
-	set(gca,'FontSize',11)
 end
+disp('Summary Statistics')
+disp('Target Absent')
+[rho,p] = mperm_corr(pres_subj_delays,pres_subj_means)
+disp('Target Present')
+[rho,p] = mperm_corr(abs_subj_delays,abs_subj_means)
+
+% summary statistic plot using subject means
+subplot(2,1,1)
+plot(abs_subj_delays,abs_subj_means,'r*')
+xlim([2.5, 9.5])
+ylim([0.75, 7])
+xlabel('Delay-time (seconds)')
+ylabel('Distance (sqrt(cm))')
+lsline;
+set(gca,'FontSize',11)
+
+subplot(2,1,2)
+plot(pres_subj_delays,pres_subj_means,'r*')
+xlim([2.5, 9.5])
+ylim([0.75, 7])
+xlabel('Delay-time (seconds)')
+ylabel('Distance (sqrt(cm))')
+lsline;
+set(gca,'FontSize',11)
+
+% subplot(3,1,3)
+% plot(pres_subj_delays,abs_subj_means-pres_subj_means,'r*')
+% xlim([2.5, 9.5])
+% ylim([0.75, 7])
+% xlabel('Delay-time (seconds)')
+% ylabel('Distance (sqrt(cm))')
+% lsline;
+% set(gca,'FontSize',11)
+
+% summary statistic correlation using subject x cond means
+abs_cond_subj_means = [];
+pres_cond_subj_means = [];
+for delay = 3:9
+	abs_cond_subj_means(end+1,:) = mean(abs_subj_means(abs_subj_delays==delay));
+	pres_cond_subj_means(end+1,:) = mean(pres_subj_means(pres_subj_delays==delay));
+end
+disp('Summary Statistics')
+disp('Target Absent')
+[rho,p] = mperm_corr((3:9)',abs_cond_subj_means)
+disp('Target Present')
+[rho,p] = mperm_corr((3:9)',pres_cond_subj_means)
+disp('Target Absent - Target Present')
+[rho,p] = mperm_corr((3:9)',abs_cond_subj_means-pres_cond_subj_means)
+
+% summary statistic plot using subject x cond means
+subplot(2,1,1)
+plot(3:9,abs_cond_subj_means,'ko')
+xlim([2.5, 9.5])
+ylim([0.75, 7])
+xlabel('Delay-time (seconds)')
+ylabel('Distance (sqrt(cm))')
+lsline;
+set(gca,'FontSize',11)
+
+subplot(2,1,2)
+plot(3:9,pres_cond_subj_means,'ko')
+xlim([2.5, 9.5])
+ylim([0.75, 7])
+xlabel('Delay-time (seconds)')
+ylabel('Distance (sqrt(cm))')
+lsline;
+set(gca,'FontSize',11)
+
+%%
+% fitlme(r,'distance ~ throwtime*delay*pres')
+r.pres = categorical(r.pres);
+r.delay = r.delay-mean(unique(r.delay));
+lme = fitlme(r,'distance ~ throwtime*delay*pres + (1+delay|subject)+ (1+throwtime|subject)', 'FitMethod', 'REML', 'StartMethod','random')
+
+% fitlme(r,'distance ~ (throwtime*pres|subject) + (throwtime*pres*delay|subject)')
 
 %% distance vs throwtime
 clc; fig = figure(4); clf;
@@ -152,12 +328,13 @@ for mem = 0:1
 	if mem == 1; disp('Target Absent');  title('Target Absent'); end; hold on;
 	if mem == 0; disp('Target Present'); title('Target Present'); end; hold on;
 	plot(r.distance, r.throwtime,'.'); hold on;
+	xlim([0, 8]); 	ylim([0.75, 2])
 	ylabel('Distance (sqrt(cm))')
 	xlabel('Throw-time (sqrt(seconds))')
 	disp('Single Trial')
 	[rho, p] = mperm_corr(r.throwtime,r.distance);
 	[rho, p] 
-	
+
 	% summary statistic plot and correlation
 	subplot(2,1,mem+1);
 	for subj_i = 1:length(subjs_to_include)
@@ -166,16 +343,15 @@ for mem = 0:1
 		mean_distance = mean(r.distance(subj_is));
 		means(subj_i,:) = [mean_throwtime, mean_distance];
 	end
-	plot(means(:,1),means(:,2),'r*')
+	plot(means(:,2),means(:,1),'r*'); hold on;
+	% set axes and least squares line
+	lsline;
+	xlim([0, 8]); 	ylim([0.75, 2])
+	set(gca,'FontSize',11)
 	disp('Summary Statistics')
 	[rho, p] =mperm_corr(means(:,1),means(:,2));
 	[rho, p]
-
-	% set axes and least squares line
-	xlim([0.75, 2])
-	ylim([2, 4])
-	lsline;
-	set(gca,'FontSize',11)
+	
 end
 
 %% make regression vars

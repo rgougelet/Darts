@@ -1,15 +1,13 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
-rmpath('/data/common/matlab/eeglab/')
+rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
 addpath([script_dir,'deps/'])
-eeglab;
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
-
+eeglab nogui;
 
 subjs_to_include = {
 	'571'
@@ -24,7 +22,8 @@ subjs_to_include = {
 	'631'
 	};
 
-%% parfor compatible
+%% use iclabel plugin to identify non-brain ics
+% parfor compatible
 parfor subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
@@ -33,13 +32,13 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_EEG = EEG;
 
-	% apply laplacian 
+	% apply laplacian (experimental)
 % 	X = [EEG.chanlocs.X];
 % 	Y = [EEG.chanlocs.Y];
 % 	Z = [EEG.chanlocs.Z];
 % 	EEG.data = laplacian_perrinX(EEG.data,X,Y,Z);
 
-	% reduce to 4 channels
+	% reduce to 4 channels (experimental)
 	% 	chans2keep = {'C11','C26','D7','D17'}; % Fz, Cz, Pz, Oz
 	% 	EEG = pop_select(EEG,'channel',chans2keep);
 

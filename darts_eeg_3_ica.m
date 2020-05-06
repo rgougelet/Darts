@@ -1,12 +1,12 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
-data_dir = [script_dir,'data/'];
-addpath(data_dir)
-addpath([script_dir,'/deps/'])
-rmpath([script_dir,'/eeglab/'])
+warning('off','MATLAB:rmpath:DirNotFound');
+rmpath([script_dir,'eeglab/'])
 addpath('/data/common/matlab/eeglab')
+addpath([script_dir,'deps/'])
+data_dir = [script_dir,'data/'];
+addpath(data_dir);
 eeglab nogui;
 
 subjs_to_include = {
@@ -23,9 +23,9 @@ subjs_to_include = {
 	};
 srate = 512;
 
-%%
-% binica is parfor compatible
-	parfor subj_i = 1:length(subjs_to_include)
+%% run ica
+% binica is parfor compatible, amica is not
+parfor subj_i = 1:length(subjs_to_include)
 	cd(script_dir);
 
 	% load dataset
@@ -41,7 +41,7 @@ srate = 512;
 	EEG.etc.pipeline{end+1} =  ['Epochs removed: ', num2str(rej_ep_inds)];
 	EEG = pop_rejepoch( EEG, rej_ep_inds ,0);
 	
-	% reject channels
+	% reject channels, identified manually
 	if strcmp(subj_id, '580')
 		rej_chans = {'A12'};
 	elseif strcmp(subj_id, '607')
@@ -57,7 +57,6 @@ srate = 512;
 	else
 		rej_chans = {};
 	end
-	
 	rej_chan_inds = [];
 	for rej_chan = rej_chans
 		labs = {EEG.chanlocs.labels};
@@ -89,7 +88,7 @@ srate = 512;
 	% EEG.setname = [old_setname,'_amica'];
 	% EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', data_dir);
 	
-	% binica
+	% binica, parfor compatible
 	cd(data_dir);
 	out_dir = [data_dir,'binica_',subj_id];
 	mkdir(out_dir)

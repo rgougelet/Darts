@@ -1,32 +1,31 @@
-close all; clc; clear;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+clear; close all; clc;
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
-rmpath('/data/common/matlab/eeglab/')
+rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
 addpath([script_dir,'deps/'])
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
-eeglab;
+eeglab nogui;
 
 %%
 subjs_to_include = {
-		'571'
-		'579'
-		'580'
-		'607'
-		'608'
-		'616'
-		'619'
-		'621'
-		'627'
-		'631'
+	'571'
+	'579'
+	'580'
+	'607'
+	'608'
+	'616'
+	'619'
+	'621'
+	'627'
+	'631'
 	};
 srate = 512;
 overwrite_rej = false; % SET TO TRUE ONLY IF YOU WANT TO REDO MANUAL CLEANING
 
-%%
+%% clean data
 % parfor compatible
 parfor subj_i = 1:length(subjs_to_include)
 
@@ -44,17 +43,19 @@ parfor subj_i = 1:length(subjs_to_include)
 	new_EEG = old_EEG;
 	new_EEG.data = [];
 	for event_i = 1:length(in.start_event_latencies)
-		epoch = old_EEG.data(:,in.start_event_latencies(event_i):in.end_event_latencies(event_i)-384); % 384 to correct for motion artifacts
-		new_EEG.data = [new_EEG.data,epoch-mean(epoch,2)];
+		epoch = old_EEG.data(:,...
+			in.start_event_latencies(event_i):in.end_event_latencies(event_i)...
+			-384); % 384 to correct for motion artifacts
+		new_EEG.data = [new_EEG.data,epoch-mean(epoch,2)]; % dc correction
 	end
 	EEG = new_EEG;	
-	EEG.pnts = length(new_EEG.data);
-	EEG.event = [];
+	EEG.pnts = length(new_EEG.data); EEG.event = [];
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'Non-trial data removed';
 	
 	% plot to verify filters/noise
-	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
+	figure('Visible','off');
+	pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
 	title(subj_id);
 	saveas(gcf,['Pre-ICA_Trimmed_' subj_id '.jpg']);
 	
@@ -81,11 +82,13 @@ parfor subj_i = 1:length(subjs_to_include)
 		save([data_dir,old_setname,'_trim.mat'],'rej_ep_inds')
 	else
 		in = load([data_dir,old_setname,'_trim.mat'],'rej_ep_inds');
+		rej_ep_inds = in.rej_ep_inds;
 		EEG.reject.rejmanual = false(1,EEG.trials);
-		EEG.reject.rejmanual(in.rej_ep_inds) = true;
+		EEG.reject.rejmanual(rej_ep_inds) = true;
 		EEG = eeg_checkset(EEG);
 	end
-	
+	EEG.etc.pipeline{end+1} =  ['Epochs removed: ', num2str(rej_ep_inds)];
+
 	% save
 	EEG.setname = [old_setname,'_trim'];
 	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',data_dir,' at ', datestr(now)];

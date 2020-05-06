@@ -1,14 +1,13 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
-rmpath('/data/common/matlab/eeglab/')
+rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
 addpath([script_dir,'deps/'])
-eeglab; close;
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
+eeglab nogui;
 
 subjs_to_include = {
 	'571'
@@ -24,20 +23,20 @@ subjs_to_include = {
 	};
 srate = 512;
 
-%%
+%% apply preprocessing to pre-ica data
 parfor subj_i = 1:length(subjs_to_include)
 	
-	%% load post-ica dataset
+	% load post-ica dataset
 	subj_id = subjs_to_include{subj_i};
 	subj_set = dir([data_dir, subj_id,'*_ic.set']);
 	icEEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	
-	%% load pre-ica dataset
+	% load pre-ica dataset
 	subj_set = dir([data_dir, subj_id,'*_',num2str(srate),'.set']);
 	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	old_setname = EEG.setname;
 	
-	%% remove rejected channels and interp
+	% remove rejected channels and interp
 	if strcmp(subj_id, '580')
 		rej_chans = {'A12'};
 	elseif strcmp(subj_id, '607')
@@ -57,7 +56,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_interp(EEG, rej_chan_inds, 'spherical');
 	EEG.etc.pipeline{end+1} =  ['Channel inds removed and interpolated: ', num2str(rej_chan_inds)];
 	
-	%% avg ref
+	% avg ref
 	EEG.nbchan = EEG.nbchan+1;
 	EEG.data(end+1,:) = zeros(1, EEG.trials*EEG.pnts);
 	EEG.chanlocs(1,EEG.nbchan).labels = 'initialReference';
@@ -65,13 +64,13 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = pop_select( EEG,'nochannel',{'initialReference'});
 	EEG.etc.pipeline{end+1} =  'Average reref.';
 	
-	%% copy ic results
+	% copy ic results
 	EEG.icaweights = icEEG.icaweights;
 	EEG.icasphere  = icEEG.icasphere;
 	EEG = eeg_checkset(EEG, 'ica');
 	EEG.etc.pipeline{end+1} =  ['ICs copied from: ', icEEG.setname];
 	
-	%% redo eog pipeline
+	% redo eog pipeline
 	uveog_i= find(strcmp({EEG.chanlocs.labels},'UVEOG'));
 	lveog_i = find(strcmp({EEG.chanlocs.labels},'LVEOG'));
 	lheog_i = find(strcmp({EEG.chanlocs.labels},'LHEOG'));
@@ -87,11 +86,12 @@ parfor subj_i = 1:length(subjs_to_include)
 	new_data = EEG.icawinv*new_icaact; % forward project to channels
 	EEG.icaact = reshape(new_icaact,size(EEG.icaact));
 	EEG.data = reshape(new_data, size(EEG.data));
-	EEG.etc.pipeline{end+1} = 'ICs reweighted';
+	EEG.etc.pipeline{end+1} = 'ICs reweighted and EOG rejected';
 	EEG.etc.eog.B_inv = B_inv;
 	EEG.etc.eog.sdx = sdx;
 	EEG.etc.eog.mx = mx;
 	
+	% linked-mastoid rereference
 	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','off');
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref, M1 and M2 removed';
@@ -99,7 +99,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG = eeg_checkset(EEG);
 	EEG.etc.pipeline{end+1} =  'EOG channels removed';
 	
-	%% copy over dipfit and label data
+	% copy over dipfit and label data
 	subj_set = dir([data_dir, subj_id,'*_lab.set']);
 	labEEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
 	EEG.dipfit = labEEG.dipfit;

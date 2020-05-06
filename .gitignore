@@ -3,6 +3,8 @@
 *.asv
 *.mat
 *.jpg
+*.svg
+*.png
 *.m~
 data/
 eeglab/

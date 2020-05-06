@@ -1,14 +1,15 @@
 clear; close all; clc;
-script_dir = '/data/mobi/Darts/Analysis/Analysis_Sept-2019/darts/';
-% script_dir = 'G:/darts/';
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
 warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
-eeglab; close;
+addpath([script_dir,'deps/'])
 data_dir = [script_dir,'data/'];
 addpath(data_dir)
+eeglab nogui;
 
+%%
 subjs_to_include = {
 	'571'
 	'579'
@@ -81,10 +82,10 @@ parfor subj_i = 1:length(subjs_to_include)
 	[A,B,C,D] = butter(n,wn, 'high');
 	sos = ss2sos(A,B,C,D);
 	[h,f] = freqz(sos, EEG.srate*100, EEG.srate );
-	[~,i] = min(abs(mag2db(abs(h))+6));
-	f(i) % -6dB cutoff
+	[~,cutoff_i] = min(abs(mag2db(abs(h))+6));
+	f(cutoff_i) % -6dB cutoff
 	mean(abs(mag2db(abs(h(f>=1))))) % pb ripple
-% 	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]);
+% 	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]); to view freq	response
 	x = EEG.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
@@ -116,10 +117,9 @@ parfor subj_i = 1:length(subjs_to_include)
 		[A,B,C,D] = butter(n,wn, 'stop');
 		sos = ss2sos(A,B,C,D);
 		[h,f] = freqz(sos, EEG.srate*100, EEG.srate );
-		[~,i] = mink(abs(mag2db(abs(h))+6),2);
-		f(i) % -6dB cutoff
+		[~,cutoff_i] = mink(abs(mag2db(abs(h))+6),2);
+		f(cutoff_i) % -6dB cutoff
 % 		figure; freqz(sos, EEG.srate*20, EEG.srate ); xlim([harm-1 harm+1]);
-
 		x = EEG.data(:,:)';
 		x = sosfilt(sos,x);
 		x = flip(sosfilt(sos,flip(x)));
