@@ -26,7 +26,7 @@ new_srate = 512;
 
 % preprocess sets
 % parfor compatible
-parfor subj_i = 1:length(subjs_to_include)
+for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
@@ -72,24 +72,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	saveas(gcf,['Prefilter_' subj_id '.jpg']);
 	
 	% highpass filter the data
-	nyq = EEG.srate/2;
-	wp = (1/nyq);
-	d = .1/nyq;
-	ws = -d+wp;
-	rp = .01;
-	rs = 6;
-	[n,wn] = buttord(wp,ws,rp,rs);
-	[A,B,C,D] = butter(n,wn, 'high');
-	sos = ss2sos(A,B,C,D);
-	[h,f] = freqz(sos, EEG.srate*100, EEG.srate );
-	[~,cutoff_i] = min(abs(mag2db(abs(h))+6));
-	f(cutoff_i) % -6dB cutoff
-	mean(abs(mag2db(abs(h(f>=1))))) % pb ripple
-% 	freqz(sos, EEG.srate*20, EEG.srate ); xlim([0 5]); to view freq	response
-	x = EEG.data(:,:)';
-	x = sosfilt(sos,x);
-	x = flip(sosfilt(sos,flip(x)));
-	EEG.data = reshape(x',size(EEG.data));
+	out = iirsos.hp(EEG.data(:,1:10000),EEG.srate,.9,1,10e-6,0)
 	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
 	title(subj_id);
 	saveas(gcf,['Highpass_' subj_id '.jpg']);

@@ -209,22 +209,24 @@ for i=i:size(Y,2)
             h(i)=fill([F(:,i)+x(i);flipud(x(i)-F(:,i))],[U(:,i);flipud(U(:,i))],fc(i,:),'FaceAlpha',alp,'EdgeColor',lc);
         end
     end
-    hold on
+    if i<size(Y,2); set(get(get(h(i),'Annotation'),'LegendInformation'),'IconDisplayStyle','off'); end
+		hold on
     if setX == 0
         if plotmean == 1
-            p(1)=plot([interp1(U(:,i),F(:,i)+i,MX(:,i)), interp1(flipud(U(:,i)),flipud(i-F(:,i)),MX(:,i)) ],[MX(:,i) MX(:,i)],mc,'LineWidth',2);
+            p(1)=plot([interp1(U(:,i),F(:,i)+i,MX(:,i)), interp1(flipud(U(:,i)),flipud(i-F(:,i)),MX(:,i)) ],[MX(:,i) MX(:,i)],mc);
         end
         if plotmedian == 1
-            p(2)=plot([interp1(U(:,i),F(:,i)+i,MED(:,i)), interp1(flipud(U(:,i)),flipud(i-F(:,i)),MED(:,i)) ],[MED(:,i) MED(:,i)],medc,'LineWidth',2);
+            p(2)=plot([interp1(U(:,i),F(:,i)+i,MED(:,i)), interp1(flipud(U(:,i)),flipud(i-F(:,i)),MED(:,i)) ],[MED(:,i) MED(:,i)],medc);
         end
     elseif setX == 1
         if plotmean == 1
-            p(1)=plot([interp1(U(:,i),F(:,i)+i,MX(:,i))+x(i)-i, interp1(flipud(U(:,i)),flipud(i-F(:,i)),MX(:,i))+x(i)-i],[MX(:,i) MX(:,i)],mc,'LineWidth',2);
+            p(1)=plot([interp1(U(:,i),F(:,i)+i,MX(:,i))+x(i)-i, interp1(flipud(U(:,i)),flipud(i-F(:,i)),MX(:,i))+x(i)-i],[MX(:,i) MX(:,i)],mc);
         end
         if plotmedian == 1
-            p(2)=plot([interp1(U(:,i),F(:,i)+i,MED(:,i))+x(i)-i, interp1(flipud(U(:,i)),flipud(i-F(:,i)),MED(:,i))+x(i)-i],[MED(:,i) MED(:,i)],medc,'LineWidth',2);
+            p(2)=plot([interp1(U(:,i),F(:,i)+i,MED(:,i))+x(i)-i, interp1(flipud(U(:,i)),flipud(i-F(:,i)),MED(:,i))+x(i)-i],[MED(:,i) MED(:,i)],medc);
         end
-    end
+		end
+		if i<size(Y,2); set(get(get(p(1),'Annotation'),'LegendInformation'),'IconDisplayStyle','off'); end
 end
 
 %% Add legend if requested
@@ -238,7 +240,7 @@ if plotlegend==1 & plotmean==1 | plotlegend==1 & plotmedian==1
         L=legend([p(1)],'Mean');
     end
     
-    set(L,'box','off','FontSize',14)
+    set(L,'box','off','FontSize',12)
 else
     L=[];
 end

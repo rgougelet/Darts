@@ -1,6 +1,6 @@
 %% init
 clear; close all; clc;
-script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts';
+script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
 addpath([script_dir,'eeglab/']);
 data_dir = [script_dir,'data/'];
@@ -126,6 +126,7 @@ for subj_i = 1:length(subjs_to_include)
 	hzn = wn*nyq;
 	[A,B,C,D] = butter(n,wn, 'bandpass');
 	sos = ss2sos(A,B,C,D);
+	freqz(sos,1024,512)
 	x = EEG_alpha.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
@@ -145,9 +146,11 @@ for subj_i = 1:length(subjs_to_include)
 	rp = .01;
 	rs = 6;
 	[n,wn] = buttord(wp,ws,rp,rs);
-	hzn = wn*nyq;
+	hzn = wn*nyq; % passband in hz, -6db
 	[A,B,C,D] = butter(n,wn, 'bandpass');
 	sos = ss2sos(A,B,C,D);
+	freqz(sos,10240,512)
+
 	x = EEG_gamma.data(:,:)';
 	x = sosfilt(sos,x);
 	x = flip(sosfilt(sos,flip(x)));
