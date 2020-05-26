@@ -3,7 +3,7 @@ clear; close all; clc;
 script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
 cd(script_dir);
 addpath([script_dir,'eeglab/']);
-addpath([script_dir,'deps/']);
+addpath(genpath([script_dir,'deps/']));
 subjs_to_include = {
 	'571'
 	'579'

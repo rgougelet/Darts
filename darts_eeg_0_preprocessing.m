@@ -7,12 +7,7 @@ addpath([script_dir,'eeglab/'])
 addpath(genpath([script_dir,'deps/']))
 data_dir = [script_dir,'data/'];
 addpath(genpath(data_dir))
-out_dir = [data_dir,datestr(now,'mmm-dd-yyyy_HH-MM-SS'),'/'];
-mkdir(out_dir);
-addpath(genpath(out_dir))
 eeglab nogui;
-diary([out_dir,'Log.txt']);
-RAII.diary = onCleanup(@() diary('off'));
 
 %%
 subjs_to_include = {
@@ -28,6 +23,11 @@ subjs_to_include = {
 	'631'
 	};
 new_srate = 512;
+pipe_dir = 'IIR BP 1 Hz Pass Edge - Lower Order - Notch Filters/';
+mkdir(pipe_dir);
+addpath(genpath(pipe_dir))
+diary([pipe_dir,datestr(now,'mmm-dd-yyyy_HH-MM-SS'),'.txt']);
+RAII.diary = onCleanup(@() diary('off'));
 
 % preprocess sets
 % parfor compatible
@@ -35,8 +35,8 @@ parfor subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
-	subj_set = dir([data_dir,subj_id,'_eeg.set']);
-	EEG = pop_loadset('filename',subj_set.name,'filepath',data_dir);
+	subj_set = dir([data_dir,'Raw/',subj_id,'_eeg.set']);
+	EEG = pop_loadset('filename',subj_set.name,'filepath',subj_set.folder);
 	old_setname = EEG.setname;
 	EEG.etc.pipeline =  {};
 	
@@ -72,18 +72,20 @@ parfor subj_i = 1:length(subjs_to_include)
 	% linked-mastoid reref
 	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','on');
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref';
-	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
-	title(['Prefilter - ' subj_id]);
-	saveas(gcf,[out_dir,subj_id,'_Prefilter.jpg']);
+% 	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
+% 	title(['Prefilter - ' subj_id]);
+% 	saveas(gcf,[out_dir,subj_id,'_Prefilter.jpg']);
 	
 	% highpass filter the data
 	% some subjects won't be fixed with filter, need
 	% to trim the data to epochs because they are moving
 	% a lot outside of them
-	[EEG.data, sr, wp, ws, rp, rs, n] = iirsos.hp(EEG.data(:,:),EEG.srate,1.5,2,10e-3,0);
-	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
-	title(['After highpass - ' subj_id]);
-	saveas(gcf,[out_dir,subj_id,'_Highpass.jpg']);
+	[EEG.data, sr, wp, ws, rp, n] = iirsos.hp(EEG.data(:,:),EEG.srate,0.7,1,0.1,0);
+
+% better to plot after the data are trimmed to epochs due to huge movement artifacts
+% 	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
+% 	title(['After highpass - ' subj_id]);
+% 	saveas(gcf,[out_dir,subj_id,'_Highpass.jpg']);
 
 	EEG.etc.pipeline{end+1} = ...
 			['Butterworth SOS HP: ', ...
@@ -91,7 +93,6 @@ parfor subj_i = 1:length(subjs_to_include)
 			', ',num2str(wp),...
 			', ',num2str(ws),...
 			', ', num2str(rp),...
-			', ', num2str(rs), ...
 			', ', num2str(n)];
 		
 	% notch filter the data
@@ -99,7 +100,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	% to trim the data to epochs because they are moving
 	% a lot outside of them
 	for harm = 60:60:(EEG.srate/2)
-			[EEG.data, sr, wp, ws, rp, rs, n] = iirsos.bs(EEG.data,EEG.srate,[harm-.25,harm+.25],[harm-.5,harm+.5],10e-3,0);
+			[EEG.data, sr, wp, ws, rp, rs, n] = iirsos.bs(EEG.data,EEG.srate,[harm-.25,harm+.25],[harm-.5,harm+.5],.1,0);
 			EEG.etc.pipeline{end+1} = ...
 			['Butterworth SOS Notch: ', ...
 			num2str(sr),...
@@ -109,9 +110,9 @@ parfor subj_i = 1:length(subjs_to_include)
 			', ', num2str(rs), ...
 			', ', num2str(n)];
 	end
-	figure; pwelch(EEG.data(:,:)',5000,20,[],512,'onesided');
-	title(['After notches - ' subj_id]);
-	saveas(gcf,[out_dir,subj_id,'_Notches.jpg']);
+% 	figure; pwelch(EEG.data(:,:)',5000,20,[],512,'onesided');
+% 	title(['After notches - ' subj_id]);
+% 	saveas(gcf,[out_dir,subj_id,'_Notches.jpg']);
 
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
@@ -122,6 +123,6 @@ parfor subj_i = 1:length(subjs_to_include)
 	
 	% save set
 	EEG.setname = [old_setname,'_',num2str(EEG.srate)];
-	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',out_dir,' at ', datestr(now)];
-	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', out_dir);
+	EEG.etc.pipeline{end+1} =  ['Saved as ',EEG.setname,' to ',pipe_dir,' at ', datestr(now)];
+	EEG = pop_saveset(EEG, 'filename', EEG.setname,'filepath', pipe_dir);
 end

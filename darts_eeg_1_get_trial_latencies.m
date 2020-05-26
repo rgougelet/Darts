@@ -1,28 +1,4 @@
-clear; close all; clc;
-script_dir = '/data/common/mobi/Experiments/Darts/Analysis/darts/';
-cd(script_dir);
-warning('off','MATLAB:rmpath:DirNotFound');
-rmpath('/data/common/matlab/eeglab')
-addpath([script_dir,'eeglab/'])
-addpath([script_dir,'deps/'])
-data_dir = [script_dir,'data/'];
-addpath(data_dir)
-eeglab nogui;
-
-%%
-subjs_to_include = {
-	'571'
-	'579'
-	'580'
-	'607'
-	'608'
-	'616'
-	'619'
-	'621'
-	'627'
-	'631'
-	};
-srate = 512;
+init
 
 % find trial start and end times
 % parfor compatible

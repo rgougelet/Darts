@@ -6,73 +6,88 @@ warning('off','MATLAB:rmpath:DirNotFound');
 rmpath('/data/common/matlab/eeglab')
 addpath([script_dir,'eeglab/'])
 addpath(genpath([script_dir,'deps/']))
-data_dir = [script_dir,'data/IIR - Reject ICs - Linked Mastoid/'];
+data_dir = [script_dir,'data/'];
 addpath(genpath(data_dir))
-eeglab;
 
 subjs_to_include = {
-	'571'
-	'579'
-	'580'
-	'607'
-	'608'
-	'616'
-	'619'
+% 	'571'
+% 	'579'
+% 	'580'
+% 	'607'
+% 	'608'
+% 	'616'
+% 	'619'
 	'621'
-	'627'
-	'631'
+% 	'627'
+% 	'631'
 	};
 srate = 512;
 %%
 cases = [0 0 0; 0 0 1; 0 1 1; 0 1 0; 1 0 0; 1 0 1; 1 1 1; 1 1 0];
-parfor case_i = 1:length(cases)
-	is_fir = cases(case_i,1);
+% not parfor compatible
+% unless pwelch is fixed for parfor loops
+for case_i = 1:length(cases)
+	is_FIR = cases(case_i,1);
 	reject_labeled_ics = cases(case_i,2);
 	use_laplacian = cases(case_i,3);
-	if is_fir
+	if is_FIR
 		out_file = ['FIR -'];
 		if reject_labeled_ics
+			in_dir = ['Reject ICs -'];
 			out_file = [out_file,' Reject ICs -'];
 			if use_laplacian
+				in_dir = [in_dir,' Laplacian'];
 				out_file = [out_file,' Laplacian'];
 			else
+				in_dir = [in_dir,' Linked Mastoid'];
 				out_file = [out_file,' Linked Mastoid'];
 			end
 		else
 			out_file = [out_file,' Keep ICs -'];
+			in_dir = ['Keep ICs -'];
 			if use_laplacian
+				in_dir = [in_dir,' Laplacian'];
 				out_file = [out_file,' Laplacian'];
 			else
+				in_dir = [in_dir,' Linked Mastoid'];
 				out_file = [out_file,' Linked Mastoid'];
 			end
 		end
 	else
 		out_file = ['IIR -'];
 		if reject_labeled_ics
+			in_dir = ['Reject ICs -'];
 			out_file = [out_file,' Reject ICs -'];
 			if use_laplacian
+				in_dir = [in_dir,' Laplacian'];
 				out_file = [out_file,' Laplacian'];
 			else
+				in_dir = [in_dir,' Linked Mastoid'];
 				out_file = [out_file,' Linked Mastoid'];
 			end
 		else
 			out_file = [out_file,' Keep ICs -'];
+			in_dir = ['Keep ICs -'];
 			if use_laplacian
+				in_dir = [in_dir,' Laplacian'];
 				out_file = [out_file,' Laplacian'];
 			else
+				in_dir = [in_dir,' Linked Mastoid'];
 				out_file = [out_file,' Linked Mastoid'];
 			end
 		end
 	end
-	out_dir = [script_dir,'data/',out_file,'/'];
+	out_dir = [script_dir,'data/',out_file,'/']
 	mkdir(out_dir);
 	out_file = [out_dir,out_file];
 	addpath(genpath(out_dir))
-	
+	in_dir = [script_dir,'data/',in_dir,'/']
+	addpath(genpath(in_dir))
+
 	%% init labels for diff regression vars
 	chan_labs = {'Front','Back'}; % must match channels in prev script
-	freq_labs = {'theta', 'alpha', 'gamma'};
-	interval_labs = {'delay', 'pre_throw'};
+	freq_labs = {'Theta', 'Alpha', 'Gamma'};
+	interval_labs = {'Delay', 'Pre_Throw'};
 	
 	%%
 	% load XLSX SNAP data
@@ -110,7 +125,12 @@ parfor case_i = 1:length(cases)
 		%% correct data collection issues
 		% the problem is there are some trials in the
 		% xlsx file that are not in eeg
-		load([data_dir, subj_id,'_eeg_',num2str(srate),'_latencies'])
+		lat = load([in_dir, subj_id,'_eeg_',num2str(srate),'_latencies']);
+		end_event_latencies = lat.end_event_latencies;
+		end_event_strings = lat.end_event_strings;
+		start_event_latencies = lat.start_event_latencies;
+		start_event_strings = lat.start_event_strings;
+		cue_event_latencies = lat.cue_event_latencies;
 		n_snap_trials = sum([r.subject] == str2double(subj_id));
 		n_eeg_trials = length(end_event_latencies);
 		eeg_trial_strs = str2num(end_event_strings(:,1:4)); % ignore warning, use str2num
@@ -137,11 +157,11 @@ parfor case_i = 1:length(cases)
 			end
 		end
 		eeg_to_snap_inds = eeg_to_snap_inds + find([r.subject]==str2double(subj_id),1) - 1;
-		
+
 		%% filter for filter-Hilbert method
-		EEG = pop_loadset('filename',subj_set,'filepath',data_dir);
+		EEG = pop_loadset('filename',subj_set,'filepath',in_dir);
 		
-		if isFIR
+		if is_FIR
 			% theta
 			EEG_theta = pop_eegfiltnew(EEG, 'locutoff',3,'hicutoff',8,'plotfreqz',0);
 			
@@ -176,9 +196,16 @@ parfor case_i = 1:length(cases)
 			for event_i = 1:length(start_event_latencies)
 				epoch = EEG.data(:,start_event_latencies(event_i):end_event_latencies(event_i)-384); % 384 to correct for motion artifacts
 				plot_EEG.data = [plot_EEG.data,epoch-mean(epoch,2)];
+				if plot_i == 1
+					figure('Visible', 'off');
+					plot(epoch'-mean(epoch,2))
+					t = [subj_id, ' Epoch ', num2str(event_i)];
+					title(t);
+					saveas(gcf,[out_dir,t,'.jpg']);
+				end
 			end
 			figure('Visible', 'off'); pwelch(plot_EEG.data(:,:)',5000,20,[],512,'onesided');
-			ylim([-40 60]);
+			ylim([-30 100]);
 			title(subj_id);
 			saveas(gcf,[out_file,' - Post-ICA_Trimmed_', subj_id, '_', num2str(plot_i),'.jpg']);
 			close
@@ -226,8 +253,8 @@ parfor case_i = 1:length(cases)
 				end
 				
 				% assign amplitudes to matching variable col and trial row
-				delay_amps = {r.(['delay_',chan_lab,'_',freq_lab])}; % get whole columns from all subjects
-				pre_throw_amps = {r.(['pre_throw_',chan_lab,'_',freq_lab])};
+				delay_amps = {r.(['Delay_',chan_lab,'_',freq_lab])}; % get whole columns from all subjects
+				pre_throw_amps = {r.(['Pre_Throw_',chan_lab,'_',freq_lab])};
 				eeg_throwtime = {r.eeg_throwtime};
 				eeg_delaytime = {r.eeg_delaytime};
 				for trial_amp_i = 1:n_eeg_trials % add in subject specific trials
@@ -238,8 +265,8 @@ parfor case_i = 1:length(cases)
 				end
 				
 				% update whole columns with added subject's data
-				[r.(['delay_',chan_lab,'_',freq_lab])] = delay_amps{:};
-				[r.(['pre_throw_',chan_lab,'_',freq_lab])] = pre_throw_amps{:};
+				[r.(['Delay_',chan_lab,'_',freq_lab])] = delay_amps{:};
+				[r.(['Pre_Throw_',chan_lab,'_',freq_lab])] = pre_throw_amps{:};
 				[r.eeg_throwtime] = eeg_throwtime{:};
 				[r.eeg_delaytime] = eeg_delaytime{:};
 				
