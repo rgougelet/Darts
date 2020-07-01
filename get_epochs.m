@@ -1,77 +1,59 @@
-init
-% pipe_dir = 'IIR HP 1 Hz Pass Edge - Notch Filters/';
-pipe_dir = 'IIR BP 1 Hz Pass Edge - Lower Order - Notch Filters/';
+function pipeline = get_epochs(pipeline,baseline_length_in_samples,offset_in_samples)
 tic
-for subj_i = 1:length(subjs_to_include)
-	subj = [];
-	subj.ID = subjs_to_include{subj_i};
-	subj.Set = dir([data_dir,pipe_dir, subj.ID,'*_512.set']);
-	try	
-		EEG = pop_loadset('filename',subj.Set.name,'filepath',subj.Set.folder);
-	catch
-		eeglab;	close all;
-		EEG = pop_loadset('filename',subj.Set.name,'filepath',subj.Set.folder);
-	end
+subjects = pipeline.Subjects;
+for subj_i = 1:length(subjects)
+	lat = load([pipeline.PipeDir,'Latencies/', subjects(subj_i).ID,'_eeg_',num2str(pipeline.SampleRate),'_latencies']);
+	subjects(subj_i).Index = subj_i;
+	subjects(subj_i).Latencies = load([pipeline.PipeDir,'Latencies/', subjects(subj_i).ID,'_eeg_',num2str(pipeline.SampleRate),'_latencies']);
+	end_latencies = lat.end_latencies;
+	end_strings = lat.end_strings;
+	start_latencies = lat.start_latencies;
+	start_strings = lat.start_strings;
+	cue_latencies = lat.cue_latencies;
 	
-	% load trial timings
-	load([data_dir,'Latencies/', subj.ID,'_eeg_',num2str(EEG.srate),'_latencies']);
-	subj.Clusters = get_clusters(EEG, each_clusters_label, labels_of_channels_in_each_cluster);
-	subj.SampleRate = EEG.srate;
-	for cluster_i = 1:length(subj.Clusters)
-		cluster = subj.Clusters(cluster_i);
-		cluster.SampleRate = subj.SampleRate;
-
+	for cluster_i = 1:length(subjects(subj_i).Clusters)
+		cluster = subjects(subj_i).Clusters(cluster_i);
+		cluster.Index = cluster_i;
+		epochs = [];
 		% using timing data from latencies file, cut out each epoch
-		parfor epoch_i = 1:length(start_event_latencies) % parfor compatible
+		for epoch_i = 1:length(start_latencies) % parfor compatible, but best not to use
+			disp(['Getting epoch: ' num2str(epoch_i)]);
+			epochs(epoch_i).Index = epoch_i;
+			epochs(epoch_i).SubjectID = subjects(subj_i).ID;
+			epochs(epoch_i).SubjectIndex = subj_i;
+			epochs(epoch_i).ClusterIndex = cluster.Index;
+			epochs(epoch_i).ClusterLabel = cluster.Label;
+			epochs(epoch_i).DelayCondition = str2num(start_strings(epoch_i,1));
+			epochs(epoch_i).TargetPosition = str2num(start_strings(epoch_i,2:3));
+			epochs(epoch_i).isPres = logical(str2num(start_strings(epoch_i,4)));
+			epochs(epoch_i).isAbs = ~epochs(epoch_i).isPres;
+			epochs(epoch_i).TrialString = start_strings(epoch_i,1:4);
+			epochs(epoch_i).SampleRate = cluster.SampleRate;
 			epochs(epoch_i).Whole = inst_subepoch( cluster, ...
-				start_event_latencies(epoch_i)-baseline_length_in_samples,...
-				end_event_latencies(epoch_i)-offset_in_samples-1 ...
+				start_latencies(epoch_i)-baseline_length_in_samples,...
+				end_latencies(epoch_i)-offset_in_samples-1 ...
 				);
 			epochs(epoch_i).Delay.Baseline = inst_subepoch( cluster, ...
-				start_event_latencies(epoch_i)-baseline_length_in_samples,...
-				start_event_latencies(epoch_i)-1 ...
+				start_latencies(epoch_i)-baseline_length_in_samples,...
+				start_latencies(epoch_i)-1 ...
 				);
 			epochs(epoch_i).Delay.Period = inst_subepoch( cluster, ...
-				start_event_latencies(epoch_i),...
-				cue_event_latencies(epoch_i)-1 ...
+				start_latencies(epoch_i),...
+				cue_latencies(epoch_i)-1 ...
 				);
 			epochs(epoch_i).PreThrow.Baseline = inst_subepoch( cluster, ...
-				cue_event_latencies(epoch_i)-baseline_length_in_samples,...
-				cue_event_latencies(epoch_i)-1 ...
+				cue_latencies(epoch_i)-baseline_length_in_samples,...
+				cue_latencies(epoch_i)-1 ...
 				);
 			epochs(epoch_i).PreThrow.Period = inst_subepoch( cluster, ...
-				cue_event_latencies(epoch_i),...
-				end_event_latencies(epoch_i)-offset_in_samples-1 ...
+				cue_latencies(epoch_i),...
+				end_latencies(epoch_i)-offset_in_samples-1 ...
 				);
 		end
-		subj.Clusters(cluster_i).Epochs = epochs;
+		subjects(subj_i).nEpochs = length(epochs);
+		subjects(subj_i).Clusters(cluster_i).Epochs = epochs;
+		% 			subjects(subj_i).Clusters(cluster_i).Data = [];
 	end
-	subjects(subj_i) = subj;
 end
-save([data_dir,pipe_dir,'subject_struct.mat'],'subjects', '-v7.3');
+pipeline.Subjects = subjects;
 toc
-
-%% trash
-% rjgplot(x, epoch.Whole.Data.VEOG,'Seconds','uV','EOG','k'); hold on;
-% 			rjgplot(x, epoch.Whole.Data.HEOG,'Seconds','uV','EOG','k');
-
-% 			plot(epoch.Whole.Data.CorrectedRaw)
-% 			plot(cluster.Data.CorrectedRaw(epoch.Whole.FirstIndex:epoch.Whole.LastIndex))
-% 
-% 			clf; x = 1:(epoch.Whole.Length.Samples);
-% 			subplot(3,1,1);
-% 			rjgplot(x, epoch.Whole.Data.CorrectedRaw,'Seconds','uV', 'Before Preprocessing');
-% 			% post
-% 			subplot(3,1,2);
-% 			rjgplot(x,cluster.Data.CorrectedRaw(epoch.Whole.Indices),'Seconds','uV','After Preprocessing')
-% 			% eog
-% 			subplot(3,1,3);
-% for i = 1:numel(subjects(subj_i).Clusters)
-
-%% todo, rewrite get latency script to
-%% make these names shorter.
-% 	end_event_latencies = lat.end_event_latencies;
-% 	end_event_strings = lat.end_event_strings;
-% 	start_event_latencies = lat.start_event_latencies;
-% 	start_event_strings = lat.start_event_strings;
-% 	cue_event_latencies = lat.cue_event_latencies;

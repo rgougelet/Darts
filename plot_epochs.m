@@ -1,45 +1,82 @@
-init
-pipe_dir = 'IIR HP 1 Hz Pass Edge - Notch Filters/';
-out_dir = [data_dir,pipe_dir,'Plot Epochs/'];
+function plot_epochs(pipeline,overwrite)
+pipe_dir = pipeline.PipeDir;
+out_dir = [pipe_dir,'Plot Epochs/'];
 mkdir(out_dir);
-overwrite = false;
-for subj_i = 1:length(subjs_to_include)
-	subj_id = subjs_to_include{subj_i};
-	load([data_dir,pipe_dir,subj_id,'_epochs'])
-	parfor epoch_i = 1:length(epochs) % parfor compatible
-		epoch = epochs{epoch_i};
+pipe_name = pipeline.Name;
+nclusters = pipeline.nClusters;
+for subj_i = 1:pipeline.nSubjects
+	subj = pipeline.Subjects(subj_i);
+	id = subj.ID;
+	subj.Clusters = rmfield(subj.Clusters,'Data');
+	parfor epoch_i = 1:subj.nEpochs % parfor compatible, could be optimized more tho
+		disp(['Plotting epoch: ',num2str(epoch_i)]);
 		% init fig
-		supt = [pipe_dir(1:end-1),' ',subj_id, ' Epoch ', num2str(epoch_i)];
-		
-		fn = [out_dir,supt,'.png'];
-		if exist(fn,'file')==2
+		close all;
+		fig = figure('Position', [0 0 1366 786], 'Visible', 'off');
+		super_title = [pipe_name,' - Subject ',id, ' Epoch ', num2str(epoch_i)];
+		fn = [out_dir,super_title,'.png'];
+		if exist(fn,'file')==2 && ~overwrite
 			continue;
-		else
-			close all; fig = figure('Position', [0 0 1366 786], 'Visible', 'off');
-			x = (1:length(epoch.inds))/srate;
-			t = annotation('textbox',[.5,.98,0,0],...
-				'string',supt,...
+		end
+		% plots both clusters
+		for clust_i = 1:nclusters
+			clust = subj.Clusters(clust_i);
+			epoch = clust.Epochs(epoch_i);
+			
+			x = (1:length(epoch.Whole.Indices))/clust.SampleRate;
+			annotation('textbox',[.5,.98,0,0],...
+				'string',super_title,...
 				'FitBoxToText','on',...
 				'LineStyle','none',...
 				'HorizontalAlignment','center',...
 				'FontSize',14);
-			% pre
-			subplot(3,1,1);
-			rjgplot(x, [epoch.pre.Front;epoch.pre.Back],'Seconds','uV');
-			title('Before Preprocessing')
-			legend({'Front','Back'})
-			% post
-			subplot(3,1,2);
-			rjgplot(x, [epoch.post.Front;epoch.post.Back],'Seconds','uV');
-			legend({'Front','Back'})
-			title('After Preprocessing')
-			% eog
-			subplot(3,1,3);
-			rjgplot(x, epoch.veog,'Seconds','uV','k'); hold on;
-			rjgplot(x, epoch.heog,'Seconds','uV','k');
-			legend({'VEOG','HEOG'})
-			title('EOG')
-			print(fig,fn,'-dpng');
+			ed = epoch.Whole.Data;
+			ceeg = eog_regression(ed.EEG.Raw,ed.EOG.Raw);
+			
+			set(0, 'CurrentFigure', fig)
+			subplot(4,1,1); hold on;
+			plot(x, ed.EEG.Raw,'DisplayName',clust.Label); xlabel('Seconds'); ylabel('uV');
+			legend show;
+			title('Before Correction');
+			subplot(4,1,2); hold on;
+			plot(x, ed.EEG.Corrected.Raw,'DisplayName',clust.Label); xlabel('Seconds'); ylabel('uV');
+			legend show;
+			title('After Correction using All Data');
+			subplot(4,1,3); hold on;
+			plot(x, ceeg,'DisplayName',clust.Label); xlabel('Seconds'); ylabel('uV');
+			legend show;
+			title('After Correction using Only Epoch Data');
+
+% 			figure; clf; 
+% 			cep_theta = eog_regression(...
+% 				ed.EEG.Filtered.Theta.Raw,...
+% 				ed.EOG.Filtered.Theta.Raw);
+% 			cep_alpha = eog_regression(...
+% 				ed.EEG.Filtered.Alpha.Raw,...
+% 				ed.EOG.Filtered.Alpha.Raw);
+% 			subplot(2,1,1); hold on;
+% 			plot(ed.EEG.Raw); 
+% 			plot(ed.EEG.Filtered.Theta.Raw)
+% 			plot(ed.EEG.Filtered.Alpha.Raw)
+% 			title('Without Correction')
+% 			legend({'Raw','Theta','Alpha'});
+% 			subplot(2,1,2); hold on;
+% 			plot(ceeg); 
+% 			plot(cep_theta);
+% 			plot(cep_alpha);
+% 			title('With Correction')
+% 			legend({'Raw','Theta','Alpha'});
 		end
+		subplot(4,1,4); hold on;
+		h = plot(x, ed.EOG.Raw'); xlabel('Seconds'); ylabel('uV');
+		if size(ed.EOG.Raw,1) == 2
+			set(h, {'color'}, {[0 0 0]; [1 0 0]});
+			legend({'VEOG','HEOG'});
+		else
+			set(h, {'color'}, {[0 0 0]; [1 0 0]; [1 0 1]});
+			legend({'VEOG','LHEOG','RHEOG'});
+		end
+		print(fig,fn,'-dpng');
 	end
 end
+

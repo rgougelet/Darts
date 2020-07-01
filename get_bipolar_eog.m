@@ -1,4 +1,4 @@
-function eog = get_bipolar_eog(EEG)	
+function eog = get_bipolar_eog(EEG, bipolar_or_monopolar)	
 
 	uveog_i= find(strcmp({EEG.chanlocs.labels},'UVEOG'));
 	lveog_i = find(strcmp({EEG.chanlocs.labels},'LVEOG'));
@@ -10,6 +10,9 @@ function eog = get_bipolar_eog(EEG)
 	lheog = EEG.data(lheog_i,:);
 	rheog = EEG.data(rheog_i,:);
 	veog = uveog-lveog;
-	heog = lheog-rheog;
+	if strcmp(bipolar_or_monopolar,'monopolar'); 	heog = [lheog;rheog]; end
+	if strcmp(bipolar_or_monopolar,'bipolar'); 	heog = lheog-rheog; end
+	if strcmp(bipolar_or_monopolar,'veog'); 	heog = []; end
+
 	eog = [veog;heog];
 end

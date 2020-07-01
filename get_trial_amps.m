@@ -1,50 +1,69 @@
-init
-pipe_dir = 'IIR BP 1 Hz Pass Edge - Lower Order - Notch Filters/';
-load([data_dir,pipe_dir,'subject_struct.mat'])
+function pipeline = get_trial_amps(pipeline)
+tic
 
 %%
-clearvars -except subjects
+for subj_i = 1:pipeline.nSubjects
+	subj = pipeline.Subjects(subj_i);
+	for clust_i = 1:pipeline.nClusters
+		clust = subj.Clusters(clust_i);
+		for epoch_i = 1:subj.nEpochs
+			disp(['Getting epoch amplitude: ',num2str(epoch_i)]);
+			ewd = clust.Epochs(epoch_i).Whole.Data;
+			cep_theta= eog_regression(...
+				ewd.EEG.Filtered.Theta.Raw,...
+				ewd.EOG.Filtered.Theta.Raw);
+			cep_alpha = eog_regression(...
+				ewd.EEG.Filtered.Alpha.Raw,...
+				ewd.EOG.Filtered.Alpha.Raw);
+			
+			ewd.EEG.Filtered.Theta.EpochCorrected = cep_theta;
+			ewd.EEG.Filtered.Alpha.EpochCorrected = cep_alpha;
+			ewd.EEG.Amplitude.Theta.Raw = abs(hilbert(cep_theta));
+			ewd.EEG.Amplitude.Alpha.Raw = abs(hilbert(cep_alpha));
+			ewd.EEG.Amplitude.Theta.Avg = mean(ewd.EEG.Amplitude.Theta.Raw);
+			ewd.EEG.Amplitude.Alpha.Avg = mean(ewd.EEG.Amplitude.Alpha.Raw);
+			clust.Epochs(epoch_i).Whole.Data = ewd;
+			
+			ew = clust.Epochs(epoch_i).Whole;
+			clust.Epochs(epoch_i).Delay.Baseline = map_whole_to_parts(ew, clust.Epochs(epoch_i).Delay.Baseline);
+			clust.Epochs(epoch_i).Delay.Period = map_whole_to_parts(ew, clust.Epochs(epoch_i).Delay.Period);
+			clust.Epochs(epoch_i).PreThrow.Baseline = map_whole_to_parts(ew, clust.Epochs(epoch_i).PreThrow.Baseline);
+			clust.Epochs(epoch_i).PreThrow.Period = map_whole_to_parts(ew, clust.Epochs(epoch_i).PreThrow.Period);
+			
+			clust.Epochs(epoch_i).BaselineCorrected.Delay.Theta.Avg = ...
+				clust.Epochs(epoch_i).Delay.Period.Data.EEG.Amplitude.Theta.Avg -...
+				clust.Epochs(epoch_i).Delay.Baseline.Data.EEG.Amplitude.Theta.Avg;
+			clust.Epochs(epoch_i).BaselineCorrected.Delay.Alpha.Avg = ...
+				clust.Epochs(epoch_i).Delay.Period.Data.EEG.Amplitude.Alpha.Avg -...
+				clust.Epochs(epoch_i).Delay.Baseline.Data.EEG.Amplitude.Alpha.Avg;
 
-% load XLSX SNAP data
-[num,txt,raw] = xlsread([data_dir,'behavioral_data_reduced.xlsx']);
-r = struct;
-headers = txt(1,:);
-for k=1:numel(headers)
-	for ri = 1:length(num)
-		r(ri).(headers{k})=num(ri,k);
-	end
-end
+			clust.Epochs(epoch_i).BaselineCorrected.Delay.Theta.Raw = ...
+				clust.Epochs(epoch_i).Delay.Period.Data.EEG.Amplitude.Theta.Raw -...
+				clust.Epochs(epoch_i).Delay.Baseline.Data.EEG.Amplitude.Theta.Avg;
+			clust.Epochs(epoch_i).BaselineCorrected.Delay.Alpha.Raw = ...
+				clust.Epochs(epoch_i).Delay.Period.Data.EEG.Amplitude.Alpha.Raw -...
+				clust.Epochs(epoch_i).Delay.Baseline.Data.EEG.Amplitude.Alpha.Avg;
+			
+			clust.Epochs(epoch_i).BaselineCorrected.PreThrow.Theta.Avg = ...
+				clust.Epochs(epoch_i).PreThrow.Period.Data.EEG.Amplitude.Theta.Avg -...
+				clust.Epochs(epoch_i).PreThrow.Baseline.Data.EEG.Amplitude.Theta.Avg;
+			clust.Epochs(epoch_i).BaselineCorrected.PreThrow.Alpha.Avg = ...
+				clust.Epochs(epoch_i).PreThrow.Period.Data.EEG.Amplitude.Alpha.Avg -...
+				clust.Epochs(epoch_i).PreThrow.Baseline.Data.EEG.Amplitude.Alpha.Avg;
 
-% init labels for diff regression vars
-chan_labs = {'Front','Back'}; % must match channels in prev script
-freq_labs = {'Theta', 'Alpha'};
-interval_labs = {'Delay', 'Pre_Throw'};
-
-% initialize eeg columns to add to the behav columns
-nans = num2cell(nan(length(r),1));
-for chan_lab = chan_labs
-		for interval_lab = interval_labs
-			[r.([interval_lab{:},'_',chan_lab{:}])] = nans{:};
+			clust.Epochs(epoch_i).BaselineCorrected.PreThrow.Theta.Raw = ...
+				clust.Epochs(epoch_i).PreThrow.Period.Data.EEG.Amplitude.Theta.Raw -...
+				clust.Epochs(epoch_i).PreThrow.Baseline.Data.EEG.Amplitude.Theta.Avg;
+			clust.Epochs(epoch_i).BaselineCorrected.PreThrow.Alpha.Raw = ...
+				clust.Epochs(epoch_i).PreThrow.Period.Data.EEG.Amplitude.Alpha.Raw -...
+				clust.Epochs(epoch_i).PreThrow.Baseline.Data.EEG.Amplitude.Alpha.Avg;
 		end
-end
-%%
-for subj = subjects
-	for clust = subj.Clusters
-		clust.Data.EOG.Filtered.Alpha.
-% 		for epoch = clust.Epochs
-% 		end
+		subj.Clusters(clust_i) = clust;
 	end
+	pipeline.Subjects(subj.Index) = subj;
 end
-%%
-for subj_i = 1:length(subjects)
-	for clust_i = 1:length(subjects(subj_i).Clusters)
-		for epoch_i = 1:length(subjects(subj_i).Clusters(clust_i))
-		epoch = subjects(subj_i).Clusters(clust_i).Epochs(epoch_i);
-% 		wd = epoch.Whole.Data.EEG.Filtered.Alp
-		end
-	end
-end
-% 
+toc
+%
 % % get amps
 % for subj_i = 1:length(subjs_to_include)
 % 	subj_id = subjs_to_include{subj_i};
@@ -55,37 +74,29 @@ end
 % 		chan_lab = chan_labs{chan_lab_i};
 % 		for freq_lab_i = 1:length(freq_labs)
 % 			freq_lab = freq_labs{freq_lab_i};
-% 			
+%
 % 			% init
 % 			delay_trial_amps = [];
 % 			prethrow_trial_amps = [];
 % 			trial_eeg_throwtime = [];
 % 			trial_eeg_delaytime = [];
 % 			for epoch_i = 1:length(epochs)
-% 				epoch = epochs{epoch_i};
-% 				ep_data = epoch.post.(chan_lab);
+% 				clust.Epochs(epoch_i) = epochs{epoch_i};
+% 				ep_data = clust.Epochs(epoch_i).post.(chan_lab);
 % 				baseline_latency_i = 1;
 % 				start_latency_i = 1+baseline_length_in_samples; % "latency" means sample index
 % 				cue_latency_i = cue_event_latencies(epoch_i)-start_event_latencies(epoch_i);
 % 				end_latency_i = (end_event_latencies(epoch_i)-offset_in_samples)-start_event_latencies(epoch_i);
-% 				
-% 				% timings, runs reduntantly for each chan/freq
-% 				trial_eeg_delaytime(end+1) = (cue_latency_i-start_latency_i+1)/srate; % time from cue onset to dart release
-% 				trial_eeg_throwtime(end+1) = (end_latency_i-cue_latency_i+1)/srate; % time from target onset to cue onset
-% 				
-% 				% get indices to split epoch into two parts
-% 				delay_baseline_inds = 1:start_latency_i;
-% 				delay_inds = start_latency_i:cue_latency_i; % target onset to throw cue onset
-% 				prethrow_baseline_inds = (cue_latency_i+1-baseline_length_in_samples):cue_latency_i;
-% 				prethrow_inds = cue_latency_i+1:end_latency_i;
-% 
+%
+
+%
 % 				bp_theta = iirsos.bp(ep_data,srate,[3 8],[2.75,8.25],.1,0);
 % 				theta.amp = abs(hilbert(bp_theta)).^2;
 % 				theta.delay.amp(epoch_i) = ...
 % 					mean(theta.amp(delay_inds)-mean(theta.amp(delay_baseline_inds)));
 % 				theta.prethrow.amp(epoch_i) = ...
 % 					mean(theta.amp(prethrow_inds)-mean(theta.amp(prethrow_baseline_inds)));
-% 
+%
 % 				bp_alpha = iirsos.bp(ep_data,srate,[8 12],[7.75,12.25],.1,0);
 % 				alpha.amp = abs(hilbert(bp_alpha)).^2;
 % 				alpha.delay.amp(epoch_i) = ...
@@ -93,7 +104,7 @@ end
 % 				alpha.prethrow.amp(epoch_i) = ...
 % 					mean(alpha.amp(prethrow_inds)-mean(alpha.amp(prethrow_baseline_inds)));
 % 			end
-% 			
+%
 % 			% assign amplitudes to matching variable col and trial row
 % 			delay_amps = {r.(['Delay_',chan_lab,'_Theta'])}; % get whole columns from all subjects to add to
 % 			prethrow_amps = {r.(['Pre_Throw_',chan_lab,'_Theta'])}; % get whole columns from all subjects to add to

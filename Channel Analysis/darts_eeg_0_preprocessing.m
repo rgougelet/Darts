@@ -23,15 +23,16 @@ subjs_to_include = {
 	'631'
 	};
 new_srate = 512;
-pipe_dir = 'IIR BP 1 Hz Pass Edge - Lower Order - Notch Filters/';
+pipe_name = 'IIR BP 1 Hz Pass Edge - Lower Order - Notch Filters - Laplacian';
+pipe_dir = [data_dir,pipe_name,'/'];
 mkdir(pipe_dir);
 addpath(genpath(pipe_dir))
-diary([pipe_dir,datestr(now,'mmm-dd-yyyy_HH-MM-SS'),'.txt']);
-RAII.diary = onCleanup(@() diary('off'));
+% diary([pipe_dir,datestr(now,'mmm-dd-yyyy_HH-MM-SS'),'.txt']);
+% RAII.diary = onCleanup(@() diary('off'));
 
 % preprocess sets
 % parfor compatible
-parfor subj_i = 1:length(subjs_to_include)
+for subj_i = 1:length(subjs_to_include)
 	
 	% load dataset
 	subj_id = subjs_to_include{subj_i};
@@ -70,7 +71,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	EEG.etc.pipeline{end+1} =  'Head center optimized';
 	
 	% linked-mastoid reref
-	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','on');
+	EEG = pop_reref(EEG, {'M1','M2'}, 'keepref','off');
 	EEG.etc.pipeline{end+1} =  'Linked-mastoid reref';
 % 	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
 % 	title(['Prefilter - ' subj_id]);
@@ -80,7 +81,7 @@ parfor subj_i = 1:length(subjs_to_include)
 	% some subjects won't be fixed with filter, need
 	% to trim the data to epochs because they are moving
 	% a lot outside of them
-	[EEG.data, sr, wp, ws, rp, n] = iirsos.hp(EEG.data(:,:),EEG.srate,0.7,1,0.1,0);
+	[EEG.data, sr, wp, ws, rp, n] = iirsos.hp(EEG.data(:,:),EEG.srate,0.7,1,0.1,0,0);
 
 % better to plot after the data are trimmed to epochs due to huge movement artifacts
 % 	figure; pwelch(EEG.data(:,:)',5000,20,[],EEG.srate,'onesided');
@@ -113,6 +114,15 @@ parfor subj_i = 1:length(subjs_to_include)
 % 	figure; pwelch(EEG.data(:,:)',5000,20,[],512,'onesided');
 % 	title(['After notches - ' subj_id]);
 % 	saveas(gcf,[out_dir,subj_id,'_Notches.jpg']);
+
+	%	apply laplacian
+	inds = true(1,length(EEG.chanlocs));
+	inds([uveog_i,lveog_i,lheog_i,rheog_i]) = false;
+	X = [EEG.chanlocs(inds).X];
+	Y = [EEG.chanlocs(inds).Y];
+	Z = [EEG.chanlocs(inds).Z];
+	EEG.data(inds,:) = laplacian_perrinX(EEG.data(inds,:),X,Y,Z);
+	EEG.etc.pipeline{end+1} =  'Re-referenced to Laplacian';
 
 	% resample
 	if EEG.srate ~= new_srate % keep old srate if equivalent
